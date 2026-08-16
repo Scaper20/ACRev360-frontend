@@ -45,16 +45,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     setError(null);
-    const { data, error: loginError } = await api.POST("/api/v1/auth/login", {
-      body: { username, password },
-    });
-    if (loginError || !data) {
-      setError("Incorrect username or password.");
+    try {
+      const { data, error: loginError } = await api.POST("/api/v1/auth/login", {
+        body: { username, password },
+      });
+      if (loginError || !data) {
+        setError("Incorrect username or password.");
+        return false;
+      }
+      setTokens({ access: data.access, refresh: data.refresh });
+      await loadMe();
+      return true;
+    } catch {
+      // fetch itself threw — network failure, CORS block, backend unreachable, etc.
+      setError("Could not reach the server. Check your connection and try again.");
       return false;
     }
-    setTokens({ access: data.access, refresh: data.refresh });
-    await loadMe();
-    return true;
   }, [loadMe]);
 
   const logout = useCallback(() => {

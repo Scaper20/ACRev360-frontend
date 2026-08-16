@@ -16,8 +16,11 @@ export function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await login(username, password);
-    setSubmitting(false);
+    try {
+      await login(username, password);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
