@@ -1,0 +1,54 @@
+/*
+  Design tokens ported from docs/DESIGN_BRIEF.md — the source of truth for *why*
+  these values, not just what they are. Two accent colors (brass, teal) is the
+  ceiling for this system; don't add a third without updating that doc first.
+*/
+:root {
+  /* Green — the brand color: nav, buttons, table headers, card accents */
+  --green-900: #06281d;
+  --green-800: #0b3d2e;
+  --green-700: #13543f;
+  --green-600: #1c6b51;
+  --green-100: #e7efe3;
+
+  /* Brass — secondary accent: sidebar section labels, active nav, one stat accent */
+  --brass: #c08b2c;
+  --brass-lt: #efe0bc;
+
+  /* Teal — tertiary accent, used in exactly two places (Outstanding stat card's
+     accent dot; the Internet/Mobile Banking channel segment) — don't spread it
+     further without a reason as specific as those two. */
+  --teal: #2b6e7a;
+  --teal-lt: #dceaec;
+
+  /* Ground */
+  --canvas: #f6efdf;
+  --surface: #fffdf6;
+  --surface-2: #fbf5e6;
+  --ink: #241d12;
+  --ink-60: #4a3f2c;
+  --ink-40: #8c7f63;
+  --line: #e6daba;
+  --line-soft: #efe6ce;
+
+  /* Semantic — separate from the accent palette, never repurposed for decoration */
+  --ok: #1c6b51;
+  --ok-bg: #e7efe3;
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #9a3324;
+  --danger-bg: #f5e3db;
+
+  /* Typography — three faces, three jobs, don't blur them (DESIGN_BRIEF.md §3) */
+  --font-display: "Fraunces", serif; /* big numbers, page/modal/document titles */
+  --font-ui: "Public Sans", sans-serif; /* body, labels, buttons, nav, table cells */
+  --font-mono: "IBM Plex Mono", monospace; /* any column of numbers or reference codes */
+
+  /* Shape & elevation */
+  --radius: 14px; /* cards, modals, the document viewer */
+  --radius-sm: 9px; /* buttons, inputs, small chips */
+  --radius-pill: 999px; /* primary actions only — a hierarchy signal, not a default */
+
+  --shadow: 0 1px 2px rgba(36, 29, 18, 0.06), 0 6px 16px rgba(36, 29, 18, 0.08);
+  --shadow-strong: 0 4px 8px rgba(36, 29, 18, 0.12), 0 16px 40px rgba(36, 29, 18, 0.18);
+}

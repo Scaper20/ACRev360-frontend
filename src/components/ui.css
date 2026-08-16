@@ -1,0 +1,127 @@
+/* Component vocabulary per docs/DESIGN_BRIEF.md §4/§6. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  padding: 10px 20px;
+  transition: background-color 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Primary actions are pills — a deliberate hierarchy signal, not decoration.
+   Don't add a second pill button next to this one on the same screen. */
+.btn-primary {
+  border-radius: var(--radius-pill);
+  background: var(--green-700);
+  color: var(--surface);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--green-600);
+}
+
+.btn-ghost {
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-60);
+  border: 1px solid var(--line);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* Cards/panels that sit above the page get the soft shadow + a 3px green top
+   edge; compact stat tiles keep a quieter corner dot instead so four in a row
+   don't compete. */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border-top: 3px solid var(--green-700);
+  padding: 24px;
+}
+
+.stat-tile {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-tile::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-color, var(--green-600));
+}
+
+.stat-tile .label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-40);
+}
+
+.stat-tile .value {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.stat-tile .delta {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.tag-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.tag-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.error-banner {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+}
