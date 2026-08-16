@@ -17,6 +17,11 @@ Requires the backend running (locally via venv or Docker — see
 `../ACRev360-backend/docs/GETTING_STARTED.md`) at the URL in `.env`. Reachable at
 `http://localhost:5173`.
 
+**Deploying?** See `../ACRev360-backend/docs/DEPLOYMENT.md` — this app deploys to
+Vercel (`vercel.json` is already set up for the SPA build + client-side routing);
+that doc covers both sides together since the frontend's `VITE_API_BASE_URL` and
+the backend's `CORS_ALLOWED_ORIGINS` have to agree with each other.
+
 Seeded admin login (once the backend's `seed_kuje` command has run): whatever
 username/password you seeded it with.
 
