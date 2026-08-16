@@ -2,12 +2,12 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { NAV_SECTIONS } from "./navSections";
 
-export function Sidebar() {
+export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
   const { user } = useAuth();
   const sections = (user && NAV_SECTIONS[user.access_level]) || [];
 
   return (
-    <nav className="sidebar">
+    <nav className={`sidebar ${open ? "sidebar-open" : ""}`}>
       <div className="sidebar-brand display">ACRev360</div>
       {sections.map((section) => (
         <div className="nav-section" key={section.section}>
@@ -18,6 +18,7 @@ export function Sidebar() {
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) => `nav-item ${isActive ? "nav-item-active" : ""}`}
+              onClick={onNavigate}
             >
               {item.label}
             </NavLink>
