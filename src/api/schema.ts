@@ -384,7 +384,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_consultants_portfolio_retrieve"];
+        get: operations["v1_consultants_portfolio_list"];
         put?: never;
         post: operations["v1_consultants_portfolio_create"];
         delete?: never;
@@ -593,7 +593,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_payers_draft_assessments_retrieve"];
+        get: operations["v1_payers_draft_assessments_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -890,6 +890,14 @@ export interface components {
             channel: number;
             is_active?: boolean;
         };
+        AddLineRequest: {
+            revenue_item_id: number;
+            /**
+             * Format: decimal
+             * @default 1.00
+             */
+            quantity: string;
+        };
         /**
          * @description * `0_30` - 0-30 days
          *     * `31_60` - 31-60 days
@@ -898,6 +906,11 @@ export interface components {
          * @enum {string}
          */
         AgeingBucketEnum: "0_30" | "31_60" | "61_90" | "OVER_90";
+        AgentActivityResponse: {
+            /** Format: decimal */
+            today_total: string;
+            recent_payments: components["schemas"]["Payment"][];
+        };
         /**
          * @description Carries `council_id` on the access token itself so apps.tenancy.middleware can
          *     set the RLS context by decoding the token alone — no DB query needed before the
@@ -941,12 +954,34 @@ export interface components {
             readonly arrears_amount: string;
             /** Format: decimal */
             readonly balance: string;
-            readonly status: components["schemas"]["BillStatusEnum"];
+            readonly status: components["schemas"]["StatusE25Enum"];
             /** Format: date */
             readonly due_date: string;
             readonly superseded_by: number | null;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        BillDetail: {
+            readonly id: number;
+            readonly bill_ref: string;
+            readonly payer: number;
+            readonly payer_ref: string;
+            readonly full_name: string;
+            /** Format: decimal */
+            readonly total_amount: string;
+            /** Format: decimal */
+            readonly amount_paid: string;
+            /** Format: decimal */
+            readonly arrears_amount: string;
+            /** Format: decimal */
+            readonly balance: string;
+            readonly status: components["schemas"]["StatusE25Enum"];
+            /** Format: date */
+            readonly due_date: string;
+            readonly superseded_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly lines: components["schemas"]["BillLineDetail"][];
         };
         BillLineDetail: {
             readonly id: number;
@@ -958,14 +993,6 @@ export interface components {
             /** Format: decimal */
             line_amount: string;
         };
-        BillLineEntry: {
-            revenue_item_id: number;
-            /**
-             * Format: decimal
-             * @default 1.00
-             */
-            quantity: string;
-        };
         BillLineEntryRequest: {
             revenue_item_id: number;
             /**
@@ -974,16 +1001,6 @@ export interface components {
              */
             quantity: string;
         };
-        /**
-         * @description * `ISSUED` - Issued
-         *     * `PART_PAID` - Part Paid
-         *     * `PAID` - Paid
-         *     * `OVERDUE` - Overdue
-         *     * `CANCELLED` - Cancelled
-         *     * `SUPERSEDED` - Superseded
-         * @enum {string}
-         */
-        BillStatusEnum: "ISSUED" | "PART_PAID" | "PAID" | "OVERDUE" | "CANCELLED" | "SUPERSEDED";
         BillsByStatus: {
             status: string;
             count: number;
@@ -998,6 +1015,10 @@ export interface components {
          * @enum {string}
          */
         BusinessSizeEnum: "MICRO" | "SMALL" | "MEDIUM" | "LARGE";
+        ChangeRateRequest: {
+            /** Format: decimal */
+            rate_amount: string;
+        };
         ChannelCatalogueEntry: {
             id: number | null;
             code: string;
@@ -1037,16 +1058,29 @@ export interface components {
             readonly commission_rate: string;
             /** Format: decimal */
             readonly commission_amount: string;
-            readonly status: components["schemas"]["CommissionSettlementStatusEnum"];
+            readonly status: components["schemas"]["Status5d5Enum"];
         };
-        /**
-         * @description * `COMPUTED` - Computed
-         *     * `APPROVED` - Approved
-         *     * `SETTLED` - Settled
-         *     * `DISPUTED` - Disputed
-         * @enum {string}
-         */
-        CommissionSettlementStatusEnum: "COMPUTED" | "APPROVED" | "SETTLED" | "DISPUTED";
+        ComputeSettlementsRequest: {
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+        };
+        ConsultantPortfolio: {
+            readonly id: number;
+            consultant: number;
+            council_revenue_item: number;
+            ward?: number | null;
+            /** Format: date */
+            readonly effective_from: string;
+            /** Format: date */
+            readonly effective_to: string | null;
+        };
+        ConsultantPortfolioRequest: {
+            consultant: number;
+            council_revenue_item: number;
+            ward?: number | null;
+        };
         Council: {
             readonly id: number;
             council_code: string;
@@ -1091,25 +1125,6 @@ export interface components {
             readonly current_rate: string;
             readonly rate_id: number;
         };
-        CouncilRevenueItemRequest: {
-            template?: number | null;
-            harmonised_code: string;
-            item_name: string;
-            category: number;
-            unit_of_charge: string;
-            is_active?: boolean;
-        };
-        CreatePayer: {
-            payer_type: components["schemas"]["PayerTypeEnum"];
-            full_name: string;
-            phone?: string;
-            address?: string;
-            ward: number;
-            nin_bvn_hash?: string;
-            tin?: string;
-            business_size?: (components["schemas"]["BusinessSizeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            revenue_item_ids?: number[];
-        };
         CreatePayerRequest: {
             payer_type: components["schemas"]["PayerTypeEnum"];
             full_name: string;
@@ -1150,6 +1165,24 @@ export interface components {
             readonly opened_at: string;
             /** Format: date-time */
             readonly closed_at: string | null;
+        };
+        DebtRefreshResponse: {
+            opened: number;
+            updated: number;
+        };
+        DraftAssessment: {
+            id: number;
+            council_revenue_item_id: number;
+            harmonised_code: string;
+            item_name: string;
+            /** Format: decimal */
+            quantity: string;
+            /** Format: decimal */
+            amount: string;
+        };
+        DuplicatePayerResponse: {
+            error: string;
+            duplicate_of: components["schemas"]["Payer"];
         };
         /**
          * @description * `NONE` - None
@@ -1211,16 +1244,6 @@ export interface components {
             /** Format: date-time */
             time: string;
         };
-        IssueBill: {
-            payer_id: number;
-            /** Format: date */
-            due_date?: string;
-            lines?: components["schemas"]["BillLineEntry"][];
-            /** @default false */
-            bill_all_drafts: boolean;
-            /** @default false */
-            roll_arrears: boolean;
-        };
         IssueBillRequest: {
             payer_id: number;
             /** Format: date */
@@ -1230,6 +1253,28 @@ export interface components {
             bill_all_drafts: boolean;
             /** @default false */
             roll_arrears: boolean;
+        };
+        IssueBillResponse: {
+            readonly id: number;
+            readonly bill_ref: string;
+            readonly payer: number;
+            readonly payer_ref: string;
+            readonly full_name: string;
+            /** Format: decimal */
+            readonly total_amount: string;
+            /** Format: decimal */
+            readonly amount_paid: string;
+            /** Format: decimal */
+            readonly arrears_amount: string;
+            /** Format: decimal */
+            readonly balance: string;
+            readonly status: components["schemas"]["StatusE25Enum"];
+            /** Format: date */
+            readonly due_date: string;
+            readonly superseded_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly superseded_count: number;
         };
         /**
          * @description * `PENDING` - Pending
@@ -1565,6 +1610,22 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        PayerCreateResponse: {
+            readonly id: number;
+            readonly payer_ref: string;
+            payer_type: components["schemas"]["PayerTypeEnum"];
+            full_name: string;
+            phone?: string;
+            address?: string;
+            ward: number;
+            nin_bvn_hash?: string;
+            tin?: string;
+            business_size?: (components["schemas"]["BusinessSizeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly kyc_status: components["schemas"]["KycStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly draft_assessments_created: number;
+        };
         /**
          * @description * `INDIVIDUAL` - Individual
          *     * `BUSINESS` - Business
@@ -1661,13 +1722,6 @@ export interface components {
             resolved_at?: string | null;
             resolved_by?: number | null;
         };
-        ReconciliationExceptionRequest: {
-            payment?: number | null;
-            note?: string;
-            /** Format: date-time */
-            resolved_at?: string | null;
-            resolved_by?: number | null;
-        };
         ReconciliationRun: {
             readonly id: number;
             readonly channel: number;
@@ -1689,6 +1743,9 @@ export interface components {
          * @enum {string}
          */
         ReconciliationRunStatusEnum: "OPEN" | "BALANCED" | "EXCEPTIONS" | "CLOSED";
+        ResolveExceptionRequest: {
+            note: string;
+        };
         RevenueCategory: {
             readonly id: number;
             name: string;
@@ -1703,6 +1760,40 @@ export interface components {
             unit_of_charge: string;
             in_initial_scope?: boolean;
         };
+        RunReconciliationRequest: {
+            /** Format: date */
+            date: string;
+            channel_code: string;
+        };
+        SettlementStatusRequest: {
+            status: components["schemas"]["Status5d5Enum"];
+        };
+        /**
+         * @description * `COMPUTED` - Computed
+         *     * `APPROVED` - Approved
+         *     * `SETTLED` - Settled
+         *     * `DISPUTED` - Disputed
+         * @enum {string}
+         */
+        Status5d5Enum: "COMPUTED" | "APPROVED" | "SETTLED" | "DISPUTED";
+        /**
+         * @description * `PENDING` - Pending
+         *     * `ACTIVE` - Active
+         *     * `SUSPENDED` - Suspended
+         *     * `EXITED` - Exited
+         * @enum {string}
+         */
+        StatusC83Enum: "PENDING" | "ACTIVE" | "SUSPENDED" | "EXITED";
+        /**
+         * @description * `ISSUED` - Issued
+         *     * `PART_PAID` - Part Paid
+         *     * `PAID` - Paid
+         *     * `OVERDUE` - Overdue
+         *     * `CANCELLED` - Cancelled
+         *     * `SUPERSEDED` - Superseded
+         * @enum {string}
+         */
+        StatusE25Enum: "ISSUED" | "PART_PAID" | "PAID" | "OVERDUE" | "CANCELLED" | "SUPERSEDED";
         SubConsultant: {
             readonly id: number;
             consultant_name: string;
@@ -1712,7 +1803,7 @@ export interface components {
              * @description Percent, e.g. 30.00
              */
             commission_rate: string;
-            readonly status: components["schemas"]["SubConsultantStatusEnum"];
+            readonly status: components["schemas"]["StatusC83Enum"];
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -1725,14 +1816,9 @@ export interface components {
              */
             commission_rate: string;
         };
-        /**
-         * @description * `PENDING` - Pending
-         *     * `ACTIVE` - Active
-         *     * `SUSPENDED` - Suspended
-         *     * `EXITED` - Exited
-         * @enum {string}
-         */
-        SubConsultantStatusEnum: "PENDING" | "ACTIVE" | "SUSPENDED" | "EXITED";
+        SubConsultantStatusRequest: {
+            status: components["schemas"]["StatusC83Enum"];
+        };
         TokenPairResponse: {
             access: string;
             refresh: string;
@@ -1756,6 +1842,10 @@ export interface components {
             /** @description Accumulated USSD input, e.g. '1*KAC/2026/000001*5000' */
             text: string;
             msisdn: string;
+        };
+        UpdateLineRequest: {
+            /** Format: decimal */
+            line_amount: string;
         };
         VerifyReceiptResponse: {
             receipt_ref: string;
@@ -1895,7 +1985,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FieldAgent"];
+                    "application/json": components["schemas"]["AgentActivityResponse"];
                 };
             };
         };
@@ -2135,6 +2225,12 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Filter to one payer's bills */
+                payer?: number;
+                /** @description Search by bill reference or payer name */
+                q?: string;
+                /** @description Filter by bill status */
+                status?: string;
             };
             header?: never;
             path?: never;
@@ -2172,7 +2268,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IssueBill"];
+                    "application/json": components["schemas"]["IssueBillResponse"];
                 };
             };
         };
@@ -2221,7 +2317,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Bill"];
+                    "application/json": components["schemas"]["BillDetail"];
                 };
             };
         };
@@ -2237,9 +2333,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["IssueBillRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["IssueBillRequest"];
-                "multipart/form-data": components["schemas"]["IssueBillRequest"];
+                "application/json": components["schemas"]["AddLineRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AddLineRequest"];
+                "multipart/form-data": components["schemas"]["AddLineRequest"];
             };
         };
         responses: {
@@ -2248,7 +2344,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IssueBill"];
+                    "application/json": components["schemas"]["BillLineDetail"];
                 };
             };
         };
@@ -2259,18 +2355,24 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
-                line_id: string;
+                line_id: number;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLineRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["UpdateLineRequest"];
+                "multipart/form-data": components["schemas"]["UpdateLineRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Bill"];
+                    "application/json": components["schemas"]["BillLineDetail"];
                 };
             };
         };
@@ -2281,7 +2383,7 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
-                line_id: string;
+                line_id: number;
             };
             cookie?: never;
         };
@@ -2461,7 +2563,7 @@ export interface operations {
             };
         };
     };
-    v1_consultants_portfolio_retrieve: {
+    v1_consultants_portfolio_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2477,7 +2579,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubConsultant"];
+                    "application/json": components["schemas"]["ConsultantPortfolio"][];
                 };
             };
         };
@@ -2493,9 +2595,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubConsultantRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubConsultantRequest"];
-                "multipart/form-data": components["schemas"]["SubConsultantRequest"];
+                "application/json": components["schemas"]["ConsultantPortfolioRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConsultantPortfolioRequest"];
+                "multipart/form-data": components["schemas"]["ConsultantPortfolioRequest"];
             };
         };
         responses: {
@@ -2504,7 +2606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubConsultant"];
+                    "application/json": components["schemas"]["ConsultantPortfolio"];
                 };
             };
         };
@@ -2515,24 +2617,18 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
-                portfolio_id: string;
+                portfolio_id: number;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubConsultantRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubConsultantRequest"];
-                "multipart/form-data": components["schemas"]["SubConsultantRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubConsultant"];
+                    "application/json": components["schemas"]["ConsultantPortfolio"];
                 };
             };
         };
@@ -2548,9 +2644,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubConsultantRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubConsultantRequest"];
-                "multipart/form-data": components["schemas"]["SubConsultantRequest"];
+                "application/json": components["schemas"]["SubConsultantStatusRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubConsultantStatusRequest"];
+                "multipart/form-data": components["schemas"]["SubConsultantStatusRequest"];
             };
         };
         responses: {
@@ -2684,7 +2780,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DebtCase"];
+                    "application/json": components["schemas"]["DebtRefreshResponse"];
                 };
             };
         };
@@ -2713,6 +2809,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by name, reference or phone */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -2750,7 +2848,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CreatePayer"];
+                    "application/json": components["schemas"]["PayerCreateResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicatePayerResponse"];
                 };
             };
         };
@@ -2776,7 +2882,7 @@ export interface operations {
             };
         };
     };
-    v1_payers_draft_assessments_retrieve: {
+    v1_payers_draft_assessments_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -2792,7 +2898,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Payer"];
+                    "application/json": components["schemas"]["DraftAssessment"][];
                 };
             };
         };
@@ -2893,11 +2999,17 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exception_id: string;
+                exception_id: number;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveExceptionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResolveExceptionRequest"];
+                "multipart/form-data": components["schemas"]["ResolveExceptionRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2916,7 +3028,13 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunReconciliationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RunReconciliationRequest"];
+                "multipart/form-data": components["schemas"]["RunReconciliationRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -3026,9 +3144,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CouncilRevenueItemRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["CouncilRevenueItemRequest"];
-                "multipart/form-data": components["schemas"]["CouncilRevenueItemRequest"];
+                "application/json": components["schemas"]["ChangeRateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ChangeRateRequest"];
+                "multipart/form-data": components["schemas"]["ChangeRateRequest"];
             };
         };
         responses: {
@@ -3073,7 +3191,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettlementStatusRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SettlementStatusRequest"];
+                "multipart/form-data": components["schemas"]["SettlementStatusRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -3087,19 +3211,28 @@ export interface operations {
     };
     v1_settlements_compute_create: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComputeSettlementsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ComputeSettlementsRequest"];
+                "multipart/form-data": components["schemas"]["ComputeSettlementsRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CommissionSettlement"];
+                    "application/json": components["schemas"]["PaginatedCommissionSettlementList"];
                 };
             };
         };

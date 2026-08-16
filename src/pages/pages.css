@@ -73,21 +73,78 @@
 .app-shell {
   min-height: 100vh;
   display: flex;
+}
+
+.app-shell-main {
+  flex: 1;
+  display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+/* Sidebar — grouped under uppercase brass section labels; active item is a
+   solid brass chip, hover is a teal wash. DESIGN_BRIEF.md §6. */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--green-900);
+  color: var(--surface);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-brand {
+  font-size: 20px;
+  color: var(--surface);
+  padding: 0 20px;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-section-label {
+  color: var(--brass);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 20px;
+  margin-bottom: 4px;
+}
+
+.nav-item {
+  display: block;
+  padding: 8px 20px;
+  color: var(--surface);
+  text-decoration: none;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.nav-item:hover {
+  background: rgba(43, 110, 122, 0.35);
+  opacity: 1;
+}
+
+.nav-item-active {
+  background: var(--brass);
+  color: var(--green-900);
+  font-weight: 600;
+  opacity: 1;
 }
 
 .topbar {
-  background: var(--green-900);
+  background: var(--green-800);
   color: var(--surface);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 32px;
-}
-
-.topbar .wordmark {
-  font-size: 20px;
-  color: var(--surface);
+  justify-content: flex-end;
+  padding: 14px 32px;
 }
 
 .topbar .who {
@@ -101,12 +158,20 @@
 .app-main {
   flex: 1;
   padding: 32px;
-  max-width: 1100px;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  max-width: 1200px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .stat-grid {
@@ -119,4 +184,232 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Lists — click-through rows, not button columns. DESIGN_BRIEF.md §6 /
+   APP_FLOW.md §3. */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table thead th {
+  background: var(--green-100);
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  color: var(--ink-60);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.data-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(28, 107, 81, 0.045);
+}
+
+.data-table tr.row-click {
+  cursor: pointer;
+}
+
+.data-table tr.row-click:hover td {
+  background: var(--brass-lt);
+}
+
+.chev {
+  color: var(--ink-40);
+  font-size: 16px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar input[type="search"],
+.toolbar input[type="text"] {
+  min-width: 240px;
+}
+
+.empty-state {
+  color: var(--ink-40);
+  padding: 24px 0;
+  text-align: center;
+}
+
+/* Modal */
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 29, 18, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.modal-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-strong);
+  width: 100%;
+  max-width: 520px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-wide {
+  max-width: 780px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-40);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 16px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.detail-item .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-40);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.detail-item .value {
+  font-size: 14px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.typeahead {
+  position: relative;
+}
+
+.typeahead input {
+  width: 100%;
+}
+
+.typeahead-results {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  margin: 4px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.typeahead-results li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.typeahead-results li:hover {
+  background: var(--brass-lt);
+}
+
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green-100);
+  color: var(--green-700);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.line-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.line-row select {
+  flex: 1;
+}
+
+.line-row input {
+  width: 90px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.checkbox-field input {
+  width: auto;
 }

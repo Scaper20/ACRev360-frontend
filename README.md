@@ -47,18 +47,35 @@ through `/api/v1/auth/refresh` on a 401 before giving up.
   buttons, stat-tile corner-dot accents, etc.) — read that doc before adding a
   new color or component pattern rather than improvising one.
 
-## What's here vs. what's next
+## What's built
 
-This is the **thin scaffold**: auth (login → JWT → protected routes) and one
-real end-to-end round trip (the dashboard, pulling live data from
-`/api/v1/dashboard/summary`). It proves the plumbing — typed client, design
-tokens, auth flow — works before the full screen build starts.
+Auth (login → JWT → protected routes) plus the full role-based navigation map
+from [docs/APP_FLOW.md](docs/APP_FLOW.md) §2 — every screen a `COUNCIL_ADMIN`,
+`CONSULTANT`, or `GLOBAL_VIEW` user can reach from the sidebar, each a real
+round trip against the live API, not a placeholder:
 
-**Not yet built** (follow-on phase): Payer Registry, Assessment & Billing,
-Payments, e-Receipts, Reconciliation, Commission Settlements, Debt Management,
-Revenue Items, Sub-Consultants, Field Agents, Audit Log — see
-[docs/APP_FLOW.md](docs/APP_FLOW.md) for the full navigation map this SPA will
-eventually implement.
+- **Dashboard** / **Global Performance** — live figures from
+  `/api/v1/dashboard/summary` and `/global`.
+- **Payer Registry** — search, register (individual/business, with the
+  business-size/TIN vs. NIN-BVN split APP_FLOW.md describes), and a detail
+  view showing draft assessments with a one-click "Issue Harmonized Bill".
+- **Assessment & e-Billing** — issue a bill by hand-picked lines, by rolling up
+  every draft assessment, or as a pure arrears consolidation (or any
+  combination); admin-only line add/edit/delete on an issued bill.
+- **Payments** — collect a payment against a bill found via live search
+  (`Typeahead`, not a raw ID field, per APP_FLOW.md §6b).
+- **e-Receipts**, **Revenue Items** (with admin rate-change), **Reconciliation**
+  (run + view exceptions), **Commission Settlements** (compute + advance
+  status), **Debt Management** (refresh ageing + escalate), **Sub-Consultants**
+  (onboard, status, portfolio assign/revoke), **Field Agents** (onboard +
+  activity), **POS Terminal Fleet**, **Audit Log**.
+
+List pages follow the click-through pattern from APP_FLOW.md §3 (`DataTable` +
+`Modal`) rather than button-per-row.
+
+**Not yet built**: the mobile field-agent PWA and the custom report builder —
+both V2_ARCHITECTURE.md §11 phase 4, deferred on the backend too. Print
+views (Demand Notice / Demand Bill) are also not built yet.
 
 ## Repository layout
 
@@ -66,8 +83,10 @@ eventually implement.
 src/
   api/         generated schema.ts + the typed fetch client (client.ts)
   auth/        token storage, auth context, protected-route wrapper
-  components/  shared UI (Button, StatCard, AppShell) + ui.css
-  pages/       route-level pages (LoginPage, DashboardPage today)
+  components/  shared UI — Button, Modal, DataTable, Typeahead, Sidebar,
+                 AppShell, StatCard, StatusTag, PageHeader — + ui.css and the
+                 per-role navSections.ts nav map
+  pages/       one file per route (PayersPage, BillsPage, PaymentsPage, …)
   styles/      design tokens (tokens.css)
 scripts/       generate-api-types.mjs
 docs/          product & design documentation (see below)
