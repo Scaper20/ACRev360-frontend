@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch';
 import type { Middleware } from 'openapi-fetch';
-import type { paths } from './generated/schema';
+import type { components, paths } from './generated/schema';
 import { authStore } from './auth-store';
 
 const env = (import.meta as unknown as { env?: Record<string, string | boolean> }).env ?? {};
@@ -37,8 +37,14 @@ async function refreshAccessToken(): Promise<string | null> {
     })
       .then(async (res) => {
         if (!res.ok) return null;
-        const data = (await res.json()) as { access: string };
-        authStore.setAccessToken(data.access);
+        // The backend rotates refresh tokens on every use (see TokenRefresh
+        // in the generated schema — `refresh` is returned alongside `access`,
+        // not just at login) and blacklists the one just spent. Discarding
+        // the new refresh token here means the *next* refresh silently fails
+        // with the now-blacklisted old one — confirmed live: second refresh
+        // in a row 401'd. Must persist both, not just the access token.
+        const data = (await res.json()) as components['schemas']['TokenRefresh'];
+        authStore.setTokens(data.access, data.refresh);
         return data.access;
       })
       .catch(() => null)
