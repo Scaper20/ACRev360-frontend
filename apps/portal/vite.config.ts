@@ -19,4 +19,13 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'https://acrev360-backend.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 })
