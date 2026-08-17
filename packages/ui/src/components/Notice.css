@@ -1,0 +1,19 @@
+.notice {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  margin-bottom: 16px;
+  border-left: 3px solid var(--brass);
+  background: var(--brass-lt);
+  color: #6b4c0c;
+}
+.notice-info {
+  border-color: var(--green-600);
+  background: var(--green-100);
+  color: var(--green-800);
+}
+.notice-bad {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}

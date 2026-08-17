@@ -1,0 +1,21 @@
+{
+  "name": "acrev360-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/portal",
+    "build": "npm run build --workspace=packages/ui && npm run build --workspace=packages/api && npm run build --workspace=apps/portal",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "codegen": "npm run codegen --workspace=packages/api",
+    "e2e": "npm run e2e --workspace=apps/portal"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

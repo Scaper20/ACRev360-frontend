@@ -1,0 +1,56 @@
+/*
+ * Design tokens ported from the original RevAc/ACRev360 prototype's
+ * `frontend/styles.css` — verified value-for-value against that file, not
+ * reconstructed from the design brief's prose. See docs/DESIGN_BRIEF.md in
+ * the original repo for the reasoning behind these choices; the short
+ * version: green is the brand color, cream is the ground, brass and teal
+ * are accents used deliberately and sparingly (teal caps at ~2-3 uses total
+ * — don't reach for it as a general-purpose third color).
+ */
+:root {
+  /* Green — brand color: nav, buttons, table headers, card accents */
+  --green-900: #06281d;
+  --green-800: #0b3d2e;
+  --green-700: #13543f;
+  --green-600: #1c6b51;
+  --green-100: #e7efe3;
+
+  /* Brass — secondary accent: sidebar labels, active nav, one stat accent */
+  --brass: #c08b2c;
+  --brass-lt: #efe0bc;
+
+  /* Teal — tertiary accent, capped at ~2-3 uses by design (see brief) */
+  --teal: #2b6e7a;
+  --teal-lt: #dceaec;
+
+  /* Ground */
+  --canvas: #f6efdf;
+  --surface: #fffdf6;
+  --surface-2: #fbf5e6;
+  --ink: #241d12;
+  --ink-60: #4a3f2c;
+  --ink-40: #8c7f63;
+  --line: #e6daba;
+  --line-soft: #efe6ce;
+
+  /* Semantic — separate pool from the accent palette, never repurpose for decoration */
+  --ok: var(--green-600);
+  --ok-bg: var(--green-100);
+  --warn: #8a5a00;
+  --warn-bg: #f6e8c8;
+  --danger: #9a3324;
+  --danger-bg: #f5e3db;
+
+  /* Shape */
+  --radius: 14px; /* large surfaces: cards, modals, doc viewer */
+  --radius-sm: 9px; /* small controls: buttons, inputs, chips */
+
+  /* Elevation — deliberately non-uniform; most floating surfaces get their
+     own one-off shadow rather than sharing this variable (see components.css) */
+  --shadow: 0 1px 2px rgba(90, 66, 20, 0.05), 0 10px 26px rgba(90, 66, 20, 0.07);
+
+  /* Typography */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}

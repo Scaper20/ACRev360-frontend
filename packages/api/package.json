@@ -1,0 +1,22 @@
+{
+  "name": "@acrev360/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "codegen": "openapi-typescript https://acrev360-backend.onrender.com/api/schema/ -o ./src/generated/schema.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.0"
+  },
+  "devDependencies": {
+    "msw": "^2.7.0",
+    "openapi-typescript": "^7.5.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.0.0"
+  }
+}

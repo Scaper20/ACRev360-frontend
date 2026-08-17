@@ -1,0 +1,54 @@
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--green-800);
+  font-weight: 700;
+  padding: 10px;
+  background: var(--green-100);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 10px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+/* Zebra tint at rest — green-600 at low alpha */
+tbody tr:nth-child(even) td {
+  background: rgba(28, 107, 81, 0.045);
+}
+/* Plain-table hover = brass */
+tbody tr:hover {
+  background: var(--brass-lt);
+}
+/* Clickable-row hover = green (wins over the plain-hover rule above via
+   selector specificity/order) — three distinct row states, not one. */
+.row-click {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.row-click:hover {
+  background: var(--green-100);
+}
+td.chev {
+  width: 22px;
+  text-align: center;
+  color: var(--ink-40);
+  font-size: 14px;
+  transition:
+    transform 0.12s ease,
+    color 0.12s ease;
+}
+tr.row-click:hover td.chev {
+  color: var(--green-700);
+  transform: translateX(2px);
+}

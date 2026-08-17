@@ -1,0 +1,52 @@
+/* Base/global styles — ported from frontend/styles.css.
+   Font loading: the consuming app must load Fraunces (weights 500/600, optical
+   size axis 9..144), Public Sans (400/500/600/700) and IBM Plex Mono
+   (400/500/600) — see apps/portal/index.html. No italics are used anywhere
+   in this system. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ported faithfully but with a deliberate fix: the original never actually set
+   tabular-nums on .mono/.num despite the design brief saying it should — that
+   was a stated-intent-vs-code gap. Fixed here since it's the clear intent. */
+.mono,
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-family: var(--font-display);
+}
+
+a {
+  color: var(--green-700);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.r {
+  text-align: right;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-40);
+  font-size: 13px;
+}

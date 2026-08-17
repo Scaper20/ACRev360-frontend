@@ -1,0 +1,13 @@
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+.kv:last-child {
+  border: none;
+}
+.kv span {
+  color: var(--ink-60);
+}
