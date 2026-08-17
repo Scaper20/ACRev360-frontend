@@ -35,16 +35,20 @@ affordances, name the project ACRev360. This repo is that frontend.
 
 I cloned the backend and verified its actual contract directly against source — not just
 the OpenAPI schema — before writing a line of frontend code. That's where the six
-overrides in §3 came from.
+overrides in §4 came from.
 
 ## 2. Repo layout
 
 Standalone repo at `C:\Users\Star2knb\Documents\ACRev360-frontend`. No GitHub remote yet
 — the user will create that themselves, same as every push decision in the old repo.
-Six commits so far (`git log --oneline` for the full list): the initial full-app scaffold,
-this handoff doc, the refresh-token-rotation fix, the Vitest suites, two more real bugs
-found via E2E testing, and the Playwright suite itself. Working tree is clean as of the
-last check.
+Eight commits so far (`git log --oneline` for the full list): the initial full-app
+scaffold, this handoff doc, the refresh-token-rotation fix, the Vitest suites, two more
+real bugs found via E2E testing, the Playwright suite itself, a handoff update, and
+pointing the dev proxy at the local backend (§3). Working tree is clean as of the last
+check.
+
+**Sibling repo, also now local:** `C:\Users\Star2knb\Documents\ACRev360-backend` — a
+clone of `Scaper20/ACRev360-backend`, runnable via Docker Compose. See §3.
 
 npm workspaces monorepo:
 
@@ -60,13 +64,103 @@ packages/
 `packages/api/src/generated/schema.ts` (3363 lines, from `npm run codegen`) **is
 committed on purpose**, not gitignored — the repo needs to build without live network
 access to the backend. Re-run `npm run codegen` (in `packages/api`) if the backend's
-schema changes; it hits `https://acrev360-backend.onrender.com/api/schema/` directly.
+schema changes; it hits `https://acrev360-backend.onrender.com/api/schema/` directly
+regardless of which backend the dev server itself is pointed at (§3) — the *schema*
+always comes from live, only actual requests get redirected locally.
 
 `npx tsc -b` from `apps/portal` is clean across all three packages as of the last check
 this session — zero errors. `npm run test --workspaces` (31 Vitest tests) and
-`npx playwright test` (4 E2E specs) are both clean too — see §9.
+`npx playwright test` (4 E2E specs) are both clean too — see §10.
 
-## 3. The live backend's contract doesn't fully match its own OpenAPI schema
+## 3. The backend now runs locally too, via Docker — and a real RLS bug turned up setting it up
+
+Cloned `Scaper20/ACRev360-backend` to `C:\Users\Star2knb\Documents\ACRev360-backend` at
+the user's request, specifically so testing (manual and the Playwright suite) has a
+disposable local database instead of permanently polluting the one live council dataset
+on Render (see §8's own note about this exact problem). The backend repo ships its own
+`docs/GETTING_STARTED.md` with two setup paths (local venv or Docker); used Docker since
+this machine had neither a native Postgres nor Docker installed yet — Docker Desktop was
+installed mid-session for this.
+
+**Setup, in order:**
+```bash
+cd C:\Users\Star2knb\Documents\ACRev360-backend
+cp .env.example .env    # then fill in a real SECRET_KEY, ALLOWED_HOSTS, a real Fernet key
+docker compose up -d --build
+docker compose exec web python manage.py seed_kuje --admin-password acrev360-dev-2026
+```
+Reachable at `http://127.0.0.1:8000` — same paths as the live one (`/api/v1/health`,
+`/api/docs/`, `/api/schema/`, etc.). Seeded login: `admin` / `acrev360-dev-2026`.
+
+**Two Windows-specific snags, both just PATH issues, not real problems:** this session's
+shell had a stale `PATH` from before Docker Desktop's install (`docker` and
+`docker-credential-desktop.exe` both unresolvable) — fixed per-command by prepending
+`C:\Program Files\Docker\Docker\resources\bin` to `$env:Path`. Not written into any
+config; a fresh terminal opened after install wouldn't hit this at all.
+
+**The real finding: `docker compose up`'s Postgres role silently bypassed Row-Level
+Security.** The compose file's `POSTGRES_USER: acrev360` becomes that role's cluster
+*bootstrap superuser* — the official `postgres` Docker image's own init behavior, not a
+misconfiguration — and Postgres superusers bypass RLS entirely, regardless of
+`FORCE ROW LEVEL SECURITY` (which every tenant-scoped table already correctly has — see
+the backend's own `apps/common/db.py`, which explicitly documents *why* FORCE is there:
+to stop the separate table-*owner* bypass. FORCE cannot touch the superuser bypass; only
+not-being-a-superuser can). Confirmed by running the backend's own pytest suite fresh:
+**all 4 tenancy/RLS tests failed** — cross-council rows were visible with no council
+filter at all, and a write RLS's `WITH CHECK` should have rejected succeeded instead of
+raising `ProgrammingError`. This is a real gap in the *local Docker setup specifically*,
+not a flaw in the RLS policies/migrations themselves, which are correct (all 4 tests pass
+once the role is fixed — see below).
+
+Tried demoting `acrev360` directly (`ALTER ROLE acrev360 NOSUPERUSER`) — Postgres refuses
+unconditionally: *"The bootstrap superuser must have the SUPERUSER attribute."* Not
+fixable in place, by design, no matter which role issues the command. **Fixed instead**
+by creating a separate, ordinary role and repointing the app at it:
+```sql
+CREATE ROLE appuser WITH LOGIN PASSWORD 'acrev360' CREATEDB;
+GRANT ALL PRIVILEGES ON DATABASE acrev360 TO appuser;
+GRANT USAGE, CREATE ON SCHEMA public TO appuser;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;
+ALTER DEFAULT PRIVILEGES FOR ROLE acrev360 IN SCHEMA public GRANT ALL ON TABLES TO appuser;
+ALTER DEFAULT PRIVILEGES FOR ROLE acrev360 IN SCHEMA public GRANT ALL ON SEQUENCES TO appuser;
+```
+(`CREATEDB` is only so `pytest-django` can create/drop its own `test_acrev360` database —
+unrelated to RLS, doesn't reopen the bypass.) `docker-compose.yml`'s `DATABASE_URL` for
+`web`/`celery-worker`/`celery-beat` now points at `appuser`, not `acrev360`. Committed
+locally in the backend repo (`ea7d6bd`, not pushed — no fork/push access to Scaper20's
+repo, and this is their repo, not something to push into unprompted). **Worth relaying to
+Scaper20 directly**: anyone else following their own README's Docker path would hit this
+identically — it's not specific to this machine.
+
+Verified after the fix: all 10 backend tests pass (was 6 passed / 4 failed, all 4
+failures the tenancy suite), health check/login/docs all still work, seeded data
+(1 council, 9 wards, 32 revenue items) survived the container recreation needed to pick
+up the new `DATABASE_URL`.
+
+**Frontend now points here by default.** `apps/portal/vite.config.ts`'s dev-server proxy
+target changed from the live Render URL to `http://localhost:8000` (commit `4a0c747`).
+Verified end-to-end: logged in via the running dev server against the local backend,
+dashboard rendered cleanly with genuinely empty freshly-seeded data, zero console errors.
+To point back at live: change the `target` in both the `server.proxy` and
+`preview.proxy` blocks back to `https://acrev360-backend.onrender.com` — commented
+in-file.
+
+**Day-to-day commands** (from `C:\Users\Star2knb\Documents\ACRev360-backend`, with
+Docker's bin dir on PATH if a fresh shell doesn't have it already):
+```bash
+docker compose up -d          # start (data persists in the postgres_data volume)
+docker compose down           # stop, keep data
+docker compose down -v        # stop AND wipe the database — data loss, confirm first
+docker compose logs -f web    # tail the app server
+docker compose exec web python manage.py shell
+docker compose exec postgres psql -U appuser -d acrev360   # NOT -U acrev360 — see above
+```
+**If the volume ever gets wiped and recreated from scratch, the `appuser` role fix above
+needs to be redone** — it's a database-level role, not part of any migration, and doesn't
+survive a fresh `postgres_data` volume. `seed_kuje` also needs a re-run in that case.
+
+## 4. The live backend's contract doesn't fully match its own OpenAPI schema
 
 Verified by reading the actual backend source (`apps/*/serializers.py`, `views.py`) in
 the cloned repo, not just trusting the generated schema. Six places diverge; every one
@@ -100,7 +194,7 @@ consistently — e.g. a bill's `line_id` came through typed differently than its
 the same route). Always check the generated type per call site and wrap with `String(x)`
 where required; don't assume consistency across similar-looking endpoints.
 
-## 4. Auth and CORS — the first two bugs live testing caught
+## 5. Auth and CORS — the first two bugs live testing caught
 
 Everything up to this point had only been verified by `tsc -b` passing — real proof
 came from logging into the live backend with real admin credentials
@@ -112,19 +206,9 @@ the live backend's `CORS_ALLOWED_ORIGINS` doesn't list any frontend origin yet (
 a `sync: false` comment in the backend's own `render.yaml`, waiting on a deployed Vercel
 URL that doesn't exist yet). **Fixed locally only**, via a Vite dev-server proxy
 (`apps/portal/vite.config.ts`) that makes `/api/*` requests same-origin from the
-browser's point of view:
-
-```ts
-server: {
-  proxy: {
-    '/api': { target: 'https://acrev360-backend.onrender.com', changeOrigin: true, secure: true },
-  },
-},
-```
-
-The same proxy config now also exists under a `preview: {}` block, so `vite preview`
-(testing a production build locally) works the same way — added while verifying nothing
-about the reload flake in §9 was dev-server-vs-prod-build specific.
+browser's point of view. (This proxy now defaults to the local Docker backend instead —
+see §3 — but the CORS gap on the live Render deployment described here is unaffected
+either way.)
 
 **This does not fix the real gap.** Once this frontend is deployed to Vercel, Render's
 `CORS_ALLOWED_ORIGINS` needs the actual deployed origin added, or every production
@@ -140,10 +224,11 @@ component." Fixed by moving the redirect into a `useEffect`
 component that reads auth state and might immediately want to redirect must do it in an
 effect, never inline in the render body.
 
-**Render free-tier cold start:** the backend sleeps after idling and takes ~40s to wake
-on the first request. Not a bug — expect it, don't debug it as one.
+**Render free-tier cold start:** the *live* backend sleeps after idling and takes ~40s to
+wake on the first request. Not a bug — expect it, don't debug it as one. Doesn't apply to
+the local Docker backend (§3), which is always warm.
 
-## 5. The refresh-token rotation bug, and a second, subtler race behind it
+## 6. The refresh-token rotation bug, and a second, subtler race behind it
 
 Found live, not by inspection: the backend rotates the refresh token on *every* use (the
 generated schema's `TokenRefresh` response type has both `access` and `refresh`, not
@@ -172,9 +257,9 @@ failed refresh only clears the session if the refresh token it personally attemp
 *still* the one on record; if it's since changed, a sibling request already won the race
 and this failure is stale, not authoritative. Also has a Vitest regression test.
 
-## 6. Two accessibility bugs found by writing tests, not by looking
+## 7. Two accessibility bugs found by writing tests, not by looking
 
-Both surfaced because `getByRole`/`getByLabel` in the new Playwright specs (§9) couldn't
+Both surfaced because `getByRole`/`getByLabel` in the new Playwright specs (§10) couldn't
 find elements that were plainly visible on screen — the tests weren't wrong, the markup
 was.
 
@@ -200,27 +285,29 @@ accepted to pin a specific id when needed. This makes the bug structurally impos
 reintroduce at a new call site, rather than relying on every future screen remembering to
 wire it up by hand.
 
-## 7. Write-path live verification — done
+## 8. Write-path live verification — done
 
 Deferred earlier in the session pending explicit user sign-off (there's no delete/cancel
-endpoint for payers or bills, so any test write is permanent). Sign-off given, then
-exercised twice: once manually through the browser, once via the `revenue-cycle.spec.ts`
-Playwright spec (§9; running that spec live several more times while debugging its
-selectors added a few more test records — same durability tradeoff, not a new decision).
+endpoint for payers or bills, so any test write against the *live* backend is permanent
+— this was the whole reason §3's local backend exists now, so future write-path testing
+doesn't have this constraint at all). Sign-off given, then exercised twice against live:
+once manually through the browser, once via the `revenue-cycle.spec.ts` Playwright spec
+(§10; running that spec live several more times while debugging its selectors added a
+few more test records — same durability tradeoff, not a new decision, and all before the
+local backend existed).
 
 Manual pass created payer `IND-0000002` ("ZZ-TEST Write Path Verification"), issued bill
 `KAC/2026/000003` from its draft assessment, recorded a full ₦5,000 payment via POS, and
 confirmed: bill transitioned to `PAID` with `₦0` balance, the Record Payment section
 correctly disappeared once paid (same terminal-status gate that blocks paying a
 `SUPERSEDED`/`CANCELLED` bill), and a receipt (`RCT-00000003`) was auto-generated
-server-side. No bugs found in this flow beyond the ones already covered in §5–§6.
+server-side. No bugs found in this flow beyond the ones already covered in §6–§7.
 
-If picking this up further: there's still no disposable/staging council to point
-repeated write-path testing at — every run (manual or automated) adds permanent records
-to the one live council dataset that exists. Not blocking, just worth knowing before
-running the E2E suite repeatedly or wiring it into CI.
+**Going forward, prefer the local backend (§3) for any further write-path testing** —
+it's disposable (`docker compose down -v` and reseed for a clean slate) where the live
+one isn't.
 
-## 8. Design system: ported, not redesigned — with two deliberate fixes
+## 9. Design system: ported, not redesigned — with two deliberate fixes
 
 Source of truth was `frontend/styles.css` in the old repo (the warm-palette version —
 confirmed the mobile app never got that migration, so it was explicitly *not* used as a
@@ -237,7 +324,7 @@ actually did (not just what its design brief claimed):
   this means bill/payer/etc. table rows expose `role="button"`, not the native `"row"`
   role — `getByRole('row', ...)` will not find them; use `getByRole('button', ...)`.
 
-## 9. Testing: Vitest (31 tests) + Playwright (4 specs) — and one unresolved flake
+## 10. Testing: Vitest (31 tests) + Playwright (4 specs) — and one unresolved flake
 
 **Vitest**, one config per package (`vitest.config.ts` in each of `packages/ui`,
 `packages/api`, `apps/portal`):
@@ -248,23 +335,25 @@ actually did (not just what its design brief claimed):
   absolute test URL — Node's `fetch`/`Request` reject relative URLs that a real browser
   would resolve against `window.location` for free): `errorMessage()`'s two response-shape
   branches, `authStore`'s token/listener behavior, and the two refresh-middleware
-  regression tests from §5 (mocks `fetch` directly to prove token persistence and the
+  regression tests from §6 (mocks `fetch` directly to prove token persistence and the
   clobber-guard both work).
 - `apps/portal` (jsdom): `sha256Hex` against known SHA-256 test vectors.
 
 Run via `npm run test --workspaces --if-present` from the repo root.
 
 **Playwright** (`apps/portal/e2e/`, config at `apps/portal/playwright.config.ts`, run via
-`npx playwright test` from `apps/portal` or `npm run e2e`). Targets the real live
-backend through the dev-server proxy, not mocks — consistent with how the whole rest of
-this project verifies itself (see the original build plan). Needs `npx playwright
-install chromium` once per machine.
+`npx playwright test` from `apps/portal` or `npm run e2e`). Targets a real backend
+through the dev-server proxy, not mocks — the local one by default now (§3). Needs
+`npx playwright install chromium` once per machine, and the local backend running
+(`docker compose up -d` in the backend repo) since there's no `webServer` entry for it in
+`playwright.config.ts`.
 - `login.spec.ts`: bad-credentials rejection (safe, repeatable, no data created),
-  successful login with role-driven nav, and session-survives-multiple-reloads (the §5
+  successful login with role-driven nav, and session-survives-multiple-reloads (the §6
   regression, at the UI level).
-- `revenue-cycle.spec.ts`: the full write path from §7, automated, with
+- `revenue-cycle.spec.ts`: the full write path from §8, automated, with
   timestamp-unique test data so repeat runs don't collide with the app's own
-  duplicate-phone detection.
+  duplicate-phone detection. Now safe to run repeatedly against the local backend without
+  the durability concern §8 describes for live.
 
 **The one thing left genuinely unresolved:** reloading the page a *second* time within
 milliseconds of a first reload that just did a background token refresh
@@ -282,16 +371,18 @@ then more) with tight back-to-back `page.reload()` calls in a standalone script,
 In other words: every code path that's *supposed* to clear the session was proven not to
 be the cause, and the failure needs a reload immediately (within ~1s) after another
 reload's own background refresh — not a pattern any real user triggers by clicking a
-browser's refresh button twice. Best working theory is a Vite dev-server/browser
-storage-commit-vs-navigation race specific to this tight timing, not an application bug,
-but this was **not confirmed**, only narrowed down by elimination. `login.spec.ts`'s
-reload test now waits ~1s between reloads — documented in a comment there — which has
-been reliable across every run since (7+ consecutive clean passes). If this resurfaces:
-don't re-add the `authStore.clear()` instrumentation from scratch, it's exactly what
-already proved inconclusive; try the production-build (`vite preview`) angle further, or
-capture a full CDP/network trace across the exact failing window instead.
+browser's refresh button twice. Best working theory was a Vite dev-server/browser
+storage-commit-vs-navigation race specific to this tight timing (found against the *live*
+backend, before §3's local one existed) — not confirmed, only narrowed down by
+elimination. `login.spec.ts`'s reload test now waits ~1s between reloads — documented in
+a comment there — which has been reliable across every run since (7+ consecutive clean
+passes against live; not yet specifically re-tested against the local backend). If this
+resurfaces: don't re-add the `authStore.clear()` instrumentation from scratch, it's
+exactly what already proved inconclusive; try the production-build (`vite preview`)
+angle further, or capture a full CDP/network trace across the exact failing window
+instead.
 
-## 10. Client-side hashing for `nin_bvn_hash` — a deliberate mitigation, not a confirmed design
+## 11. Client-side hashing for `nin_bvn_hash` — a deliberate mitigation, not a confirmed design
 
 `PayerFormModal.tsx` hashes NIN/BVN with `crypto.subtle.digest` (SHA-256,
 `apps/portal/src/lib/hash.ts`) before sending it, for INDIVIDUAL payers only. This was a
@@ -301,9 +392,11 @@ for a field literally named `nin_bvn_hash` — meaning the backend's own field n
 it expects an already-hashed value, but nothing enforces that contract. Sending it hashed
 client-side is my mitigation for a field that otherwise reads as if it should never
 receive plaintext PII. **Not yet confirmed with whoever owns the backend** that this is
-the intended design — flag it to them before this goes to real production data.
+the intended design — flag it to them before this goes to real production data. Now that
+the backend runs locally too (§3), this is directly checkable by reading that source
+again rather than only recalling it — worth doing before raising it.
 
-## 11. Council onboarding is a one-shot form, not a wizard, because the backend can't do more yet
+## 12. Council onboarding is a one-shot form, not a wizard, because the backend can't do more yet
 
 `OnboardCouncilPage.tsx` posts once to `POST /councils/onboard` and that's the entire
 surface — there is no `GET /councils` list, no council-config read/write after creation,
@@ -319,13 +412,40 @@ form, so no `access_level`-based nav logic can safely show/hide it. It lives at 
 route (`/platform/onboard-council`); the backend's own 403 is the actual access gate for
 anyone who lands there without permission.
 
-## 12. Standing decisions worth not re-litigating
+## 13. Feature gap audit: what the old prototype had that this build doesn't (yet)
 
-- **This frontend targets the real live backend directly, not mocks**, as the primary
-  verification method — true for manual testing, Playwright, *and* the two live-backend
-  Vitest regression tests. `msw` (`packages/api/src/mocks/`) exists only as a secondary,
-  light layer for fast isolated component work — only health/login/me are mocked. Don't
-  invert this without a reason.
+Cross-referenced the old `Test prod` app's actual UI (`frontend/app.js`, its PRD/APP_FLOW
+docs) against every route file here, then checked the new backend's generated schema to
+sort findings into two buckets:
+
+**Closeable now — the new backend already has the endpoint, nobody's built the UI yet:**
+1. **Printable documents** (Demand Notice / Demand Bill) — the backend's own docstring on
+   `GET /api/v1/bills/{bill_ref}` says it's public *specifically* to power these two print
+   pages. Zero print code exists here; the ported `DocViewer` component sits unused.
+2. **Consultant portfolio management** (assign/revoke which revenue items a consultant
+   handles) — backend has full CRUD (`GET/POST /consultants/{id}/portfolio`,
+   `POST .../end`), `ConsultantsPage` has no UI for it at all.
+3. **Agent activity view** (daily returns: visits/bills issued/collected) — backend has
+   `GET /agents/{id}/activity`, `AgentsPage` rows aren't even clickable.
+4. **Arrears consolidation on the fast path** — `NewBillModal` has this working
+   correctly; `PayerDetailModal`'s faster "Issue Harmonized Bill" button hardcodes
+   `roll_arrears: false` with no way to opt in from there.
+5. **Public, unauthenticated receipt verification** — backend has
+   `/api/v1/verify/{qr_token}`; every route here except `/login` requires auth.
+
+**Backend-gated — already known, matches §12/standing-decisions scope notes:** custom
+Reports builder (no `/reports` endpoint at all), the mobile field-agent app (no
+worklist/offline-sync endpoints), cross-council switcher (no `GET /councils` list).
+
+None of this has been started — the user asked to find the gaps first, building was
+paused for the local-backend setup in §3 instead. Picking this up: the five "closeable"
+items are all pure frontend work now that a local backend exists to test against freely.
+
+## 14. Standing decisions worth not re-litigating
+
+- **The dev-server proxy defaults to the local Docker backend (§3), not live Render.**
+  This was an explicit ask, not a default I chose — don't quietly revert it back to
+  live without being asked to.
 - **TypeScript is pinned to `~5.9.3`** across all three packages/apps deliberately —
   Vite's default scaffold pulls a newer TS that `openapi-typescript@^7.5.0` doesn't
   support as a peer dep. Don't let a future `npm install`/upgrade silently drift this
@@ -336,11 +456,9 @@ anyone who lands there without permission.
   (memory-only refresh = safer but logs out on reload; httpOnly cookie = needs backend
   changes). Don't treat it as locked in if a real security review wants something
   stronger.
-- **Scope for this pass mirrors what the backend actually supports** — no field-agent
-  mobile/offline screens (no worklist or sync endpoints exist), no custom report builder
-  (no `/reports` endpoint, only the two fixed `dashboard/*` ones), no cross-council
-  switcher. Don't scaffold UI for endpoints that don't exist yet; wait for backend phase
-  4.
+- **Scope for this pass mirrors what the backend actually supports** — see §13 for the
+  full, verified list of what that excludes and why. Don't scaffold UI for endpoints
+  that don't exist yet.
 - **Any generated-type field that has a schema-level `default:` may still be required by
   the generated TypeScript type** (`roll_arrears`, for one) — pass it explicitly rather
   than assuming the default covers you. This bit multiple call sites during the build;
@@ -350,25 +468,30 @@ anyone who lands there without permission.
   `components['schemas'][...]` type is one import away — this was cleaned up everywhere
   it crept in under time pressure (`PayerFormModal`, `BillDetailModal`,
   `ConsultantsPage`, `SettlementsPage`) and should stay clean.
-- **Fix shared components, not call sites, when the bug is structural.** Both §6 bugs
+- **Fix shared components, not call sites, when the bug is structural.** Both §7 bugs
   could have been patched at each individual usage; instead `AppShell`/`Field` were fixed
   once so the whole class of bug can't recur at a 39th call site nobody thought to check.
   Prefer this shape of fix again when a defect is "every caller forgot the same thing."
+- **On the local backend specifically: never connect as the `acrev360` Postgres role.**
+  It's the cluster's bootstrap superuser and bypasses RLS entirely — see §3. Always use
+  `appuser`, and re-create that role if the `postgres_data` volume is ever wiped.
 
-## 13. Not yet done
+## 15. Not yet done
 
+- **The five closeable feature gaps from §13** — print documents, consultant portfolio
+  UI, agent activity view, arrears consolidation on the fast path, public receipt
+  verification. Found, not yet built.
 - **Deploy prep** — no Vercel config, no `VITE_API_BASE_URL` env var set anywhere yet.
-  The dev-only CORS proxy (§4) does not apply to a production build; without
-  `VITE_API_BASE_URL` set at build time the client falls back to hitting
-  `https://acrev360-backend.onrender.com` directly, which will fail CORS in production
-  until that backend's `CORS_ALLOWED_ORIGINS` is updated with the real deployed origin.
-  Both sides of that need to happen together.
-- **The tight-reload flake in §9** — narrowed down by elimination, not root-caused. Not
-  believed to affect real usage (never reproduced under realistic timing), but flagged
-  rather than silently worked around with no explanation.
-- **`nin_bvn_hash` server-side design** (§10) — my client-side hash is a mitigation I
+  Once deployed, Render's `CORS_ALLOWED_ORIGINS` needs the real Vercel origin (§5) —
+  unrelated to and doesn't block the local-backend work in §3.
+- **The tight-reload flake in §10** — narrowed down by elimination, not root-caused, and
+  found only against the live backend. Not believed to affect real usage.
+- **`nin_bvn_hash` server-side design** (§11) — my client-side hash is a mitigation I
   chose, not a confirmed-correct contract. Needs a conversation with whoever owns the
   backend.
+- **The RLS-bypass fix (§3) should be relayed to Scaper20** — it's a real gap in their
+  own docker-compose.yml setup path, not fixable from this side beyond the local
+  workaround already applied and committed (locally only, no push access).
 - **GitHub remote** — none created yet for this repo; user said they'd do it themselves.
 - **`docs/V2_ARCHITECTURE.md` / `docs/V2_FRONTEND.md` in the old `Test prod` repo** were
   written but never committed/pushed there — still open, unconfirmed with the user
