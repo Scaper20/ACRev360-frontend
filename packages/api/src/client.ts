@@ -25,7 +25,20 @@ let refreshInFlight: Promise<string | null> | null = null;
 /** Refreshes the access token using the stored refresh token. Single-flight:
  * concurrent 401s during the same tick share one refresh call rather than
  * each firing their own. Returns the new access token, or null if the
- * refresh itself was rejected (session is over). */
+ * refresh itself was rejected (session is over).
+ *
+ * React (StrictMode, or just two components mounting close together) can
+ * still produce two *separate* refresh attempts back-to-back rather than
+ * concurrently — e.g. request A's 401 arrives, refreshes, and fully
+ * completes (resetting refreshInFlight) before request B's own (earlier-sent,
+ * slower-to-respond) 401 is even handled. B then starts its own fresh
+ * refresh using the token that was current *before* A rotated it. Live
+ * testing reproduced exactly this: B's refresh 401s against A's
+ * already-blacklisted token. If B's failure naively cleared the session, it
+ * would sign out a session A had just successfully re-established a moment
+ * earlier. So a failure here only clears the session if the refresh token
+ * we personally attempted is still the one on record — if it's since
+ * changed, somebody else already won the race and this failure is stale. */
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = authStore.getRefreshToken();
   if (!refresh) return null;
@@ -36,7 +49,10 @@ async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify({ refresh }),
     })
       .then(async (res) => {
-        if (!res.ok) return null;
+        if (!res.ok) {
+          if (authStore.getRefreshToken() === refresh) authStore.clear();
+          return null;
+        }
         // The backend rotates refresh tokens on every use (see TokenRefresh
         // in the generated schema — `refresh` is returned alongside `access`,
         // not just at login) and blacklists the one just spent. Discarding
@@ -47,7 +63,10 @@ async function refreshAccessToken(): Promise<string | null> {
         authStore.setTokens(data.access, data.refresh);
         return data.access;
       })
-      .catch(() => null)
+      .catch(() => {
+        if (authStore.getRefreshToken() === refresh) authStore.clear();
+        return null;
+      })
       .finally(() => {
         refreshInFlight = null;
       });
@@ -67,11 +86,23 @@ const authMiddleware: Middleware = {
     // refresh — not a case to retry, that would loop.
     if (request.url.includes('/auth/login') || request.url.includes('/auth/refresh')) return response;
 
-    const newAccess = await refreshAccessToken();
-    if (!newAccess) {
-      authStore.clear();
-      return response;
+    // React (StrictMode, or just two components mounting close together) can
+    // fire two requests that both go out before either gets a token attached,
+    // so both 401 independently. If a sibling request already refreshed by
+    // the time this one's 401 arrives, the access token in memory will have
+    // moved on from whatever (or nothing) this request was sent with — just
+    // retry with it directly instead of kicking off a second, redundant
+    // refresh.
+    const attachedAuth = request.headers.get('Authorization');
+    const currentAccess = authStore.getAccessToken();
+    if (currentAccess && attachedAuth !== `Bearer ${currentAccess}`) {
+      const retryRequest = request.clone();
+      retryRequest.headers.set('Authorization', `Bearer ${currentAccess}`);
+      return fetch(retryRequest);
     }
+
+    const newAccess = await refreshAccessToken();
+    if (!newAccess) return response; // refreshAccessToken() already cleared the session if that failure was authoritative
     const retryRequest = request.clone();
     retryRequest.headers.set('Authorization', `Bearer ${newAccess}`);
     return fetch(retryRequest);

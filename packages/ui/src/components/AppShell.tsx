@@ -5,6 +5,7 @@ import './AppShell.css';
 export interface NavItem {
   key: string;
   label: string;
+  href: string;
   active: boolean;
   onClick: () => void;
 }
@@ -47,7 +48,13 @@ export function AppShell({
 }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const handleNavClick = (item: NavItem) => {
+  // A real href (below) means modifier-clicks (ctrl/cmd/shift/middle-click)
+  // fall through to native browser behavior — open in new tab, copy link
+  // address, etc. — same as react-router's own <Link>. Only a plain left
+  // click is intercepted for client-side navigation.
+  const handleNavClick = (e: React.MouseEvent, item: NavItem) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
     item.onClick();
     setDrawerOpen(false);
   };
@@ -70,7 +77,7 @@ export function AppShell({
             <div key={section.label}>
               <div className="nav-label">{section.label}</div>
               {section.items.map((item) => (
-                <a key={item.key} className={item.active ? 'active' : undefined} onClick={() => handleNavClick(item)}>
+                <a key={item.key} href={item.href} className={item.active ? 'active' : undefined} onClick={(e) => handleNavClick(e, item)}>
                   {item.label}
                 </a>
               ))}

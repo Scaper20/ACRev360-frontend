@@ -41,6 +41,7 @@ export function ProtectedLayout() {
         items: s.items.map((item) => ({
           key: item.key,
           label: item.label,
+          href: item.to,
           active: location.pathname === item.to,
           onClick: () => navigate(item.to),
         })),
