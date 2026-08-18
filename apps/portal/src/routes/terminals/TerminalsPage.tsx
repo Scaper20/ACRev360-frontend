@@ -1,5 +1,5 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { NumCell, TableWrap, Tag } from '@acrev360/ui';
+import { NumCell, TableWrap, Tag, money } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { agentCodeLookup, useAgents } from '../../lib/agents';
@@ -33,8 +33,10 @@ export function TerminalsPage() {
             <thead>
               <tr>
                 <th>Terminal ID</th>
+                <th>Bank TID</th>
                 <th>Agent</th>
                 <th>Ward</th>
+                <th className="r">Collected</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -43,8 +45,10 @@ export function TerminalsPage() {
                 data.map((t) => (
                   <tr key={t.id}>
                     <NumCell>{t.terminal_id}</NumCell>
+                    <NumCell>{t.bank_terminal_id || '—'}</NumCell>
                     <NumCell>{agentCode(t.agent)}</NumCell>
                     <td>{wardName(t.ward)}</td>
+                    <NumCell className="r">{money(t.collected)}</NumCell>
                     <td>
                       <Tag variant={STATUS_TAG[t.status] ?? 'neutral'}>{t.status}</Tag>
                     </td>
@@ -52,7 +56,7 @@ export function TerminalsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="empty">
+                  <td colSpan={6} className="empty">
                     No terminals deployed
                   </td>
                 </tr>

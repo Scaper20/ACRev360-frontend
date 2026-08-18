@@ -24,6 +24,7 @@ export function PaymentsPage() {
             <thead>
               <tr>
                 <th>Payment Ref</th>
+                <th>Payer</th>
                 <th>Bill</th>
                 <th>Channel</th>
                 <th className="r">Amount</th>
@@ -36,6 +37,9 @@ export function PaymentsPage() {
                 data.map((p) => (
                   <tr key={p.id}>
                     <NumCell>{p.payment_ref}</NumCell>
+                    <td>
+                      {p.full_name} <span className="num">({p.payer_ref})</span>
+                    </td>
                     <NumCell>{p.bill_ref}</NumCell>
                     <td>{p.channel_code}</td>
                     <NumCell className="r">{money2(p.amount)}</NumCell>
@@ -47,7 +51,7 @@ export function PaymentsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="empty">
+                  <td colSpan={7} className="empty">
                     No payments recorded yet
                   </td>
                 </tr>

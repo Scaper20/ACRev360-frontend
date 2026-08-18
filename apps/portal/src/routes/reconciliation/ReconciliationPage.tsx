@@ -1,5 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Button, ClickableRow, Field, KV, Modal, NumCell, Select, TableWrap, Tag, money2, shortDate, useToast } from '@acrev360/ui';
+import type { GlobalExceptionList } from '@acrev360/api';
+import { Button, Card, ClickableRow, Field, KV, Modal, NumCell, Select, TableWrap, Tag, money2, shortDate, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
@@ -22,6 +23,17 @@ export function ReconciliationPage() {
       const { data, error } = await apiClient.GET('/api/v1/reconciliation', { params: { query: {} } });
       if (error) throw new Error(errorMessage(error));
       return data.results;
+    },
+  });
+
+  // GET /reconciliation/exceptions returns a bare array, not the paginated
+  // envelope the generated type claims — see packages/api/src/overrides.ts #7.
+  const unmatchedQuery = useQuery({
+    queryKey: ['reconciliation', 'exceptions'],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/reconciliation/exceptions', { params: { query: {} } });
+      if (error) throw new Error(errorMessage(error));
+      return data as unknown as GlobalExceptionList;
     },
   });
 
@@ -49,7 +61,8 @@ export function ReconciliationPage() {
           </Button>
         </div>
       )}
-      <div className="card">
+      <Card style={{ marginBottom: 16 }}>
+        <h3>Recent Runs</h3>
         <TableWrap>
           {isLoading ? (
             <div className="empty">Loading…</div>
@@ -92,7 +105,51 @@ export function ReconciliationPage() {
             </table>
           )}
         </TableWrap>
-      </div>
+      </Card>
+
+      <Card>
+        <h3>Unmatched Bank Credits</h3>
+        <TableWrap>
+          {unmatchedQuery.isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : unmatchedQuery.error ? (
+            <div className="notice notice-bad">{unmatchedQuery.error instanceof Error ? unmatchedQuery.error.message : 'Failed to load unmatched credits'}</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bank Ref</th>
+                  <th>Channel</th>
+                  <th>Run Date</th>
+                  <th className="r">Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unmatchedQuery.data && unmatchedQuery.data.length > 0 ? (
+                  unmatchedQuery.data.map((ex) => (
+                    <tr key={ex.id}>
+                      <NumCell>{ex.bank_txn_ref}</NumCell>
+                      <td>{ex.channel_code}</td>
+                      <NumCell>{shortDate(ex.run_date)}</NumCell>
+                      <NumCell className="r">{money2(ex.amount)}</NumCell>
+                      <td>
+                        <Tag variant={ex.resolved_at != null ? 'ok' : 'bad'}>{ex.resolved_at != null ? 'RESOLVED' : 'UNRESOLVED'}</Tag>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="empty">
+                      Nothing unmatched — all clean
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </TableWrap>
+      </Card>
 
       {runOpen && (
         <Modal

@@ -57,6 +57,7 @@ export function BillListPage() {
                 <tr>
                   <th>Bill Ref</th>
                   <th>Payer</th>
+                  <th>Consultant</th>
                   <th className="r">Total</th>
                   <th className="r">Balance</th>
                   <th>Due</th>
@@ -69,6 +70,7 @@ export function BillListPage() {
                     <ClickableRow key={b.id} onClick={() => setDetailId(b.id)}>
                       <NumCell>{b.bill_ref}</NumCell>
                       <td>{b.full_name}</td>
+                      <td>{b.consultant_name ?? 'Council Direct'}</td>
                       <NumCell className="r">{money(b.total_amount)}</NumCell>
                       <NumCell className="r">{money(b.balance)}</NumCell>
                       <NumCell>{shortDate(b.due_date)}</NumCell>
@@ -79,7 +81,7 @@ export function BillListPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="empty">
+                    <td colSpan={7} className="empty">
                       No bills match
                     </td>
                   </tr>

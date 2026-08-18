@@ -1,6 +1,6 @@
 /**
- * Six places where the generated OpenAPI schema is provably wrong about what
- * the server actually returns on the wire (verified against the real
+ * Seven places where the generated OpenAPI schema is provably wrong about
+ * what the server actually returns on the wire (verified against the real
  * serializers/views, not just the schema — see the frontend build plan for
  * how each was found). Use these types instead of the generated ones at the
  * specific call sites noted, with a comment pointing back here.
@@ -61,3 +61,11 @@ export type CommissionSettlementList = components['schemas']['CommissionSettleme
  * ({revenue_item_id, quantity?}). Collapsed into one shared type.
  */
 export type BillLineEntry = components['schemas']['AddLineRequest'];
+
+/**
+ * 7. GET /api/v1/reconciliation/exceptions is documented as the paginated
+ * envelope (PaginatedGlobalExceptionList) but the @action returns a bare
+ * array via `Response(GlobalExceptionSerializer(qs, many=True).data)` —
+ * verified live (`[]`, not `{count, next, previous, results}`).
+ */
+export type GlobalExceptionList = components['schemas']['GlobalException'][];

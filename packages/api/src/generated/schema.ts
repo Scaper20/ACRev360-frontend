@@ -655,6 +655,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reconciliation/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Cross-run view of exceptions — 'browse everything unmatched' rather than
+         *     having to already know which run an exception belongs to. Defaults to
+         *     unresolved-only; ?resolved=true/false narrows either way.
+         */
+        get: operations["v1_reconciliation_exceptions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reconciliation/exceptions/{exception_id}/resolve": {
         parameters: {
             query?: never;
@@ -965,6 +986,7 @@ export interface components {
             readonly superseded_by: number | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly consultant_name: string;
         };
         BillDetail: {
             readonly id: number;
@@ -986,6 +1008,7 @@ export interface components {
             readonly superseded_by: number | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly consultant_name: string;
             readonly lines: components["schemas"]["BillLineDetail"][];
         };
         BillLineDetail: {
@@ -1005,6 +1028,11 @@ export interface components {
              * @default 1.00
              */
             quantity: string;
+        };
+        BilledByItem: {
+            item_name: string;
+            /** Format: decimal */
+            billed: string;
         };
         BillsByStatus: {
             status: string;
@@ -1039,15 +1067,34 @@ export interface components {
          * @enum {string}
          */
         ChannelCodeEnum: "POS" | "OTC" | "IB_MB" | "USSD" | "FIRSTMONIE";
+        CollectedByChannel: {
+            code: string;
+            label: string;
+            /** Format: decimal */
+            amount: string;
+        };
         CollectedByConsultant: {
             consultant_name: string;
             /** Format: decimal */
             collected: string;
+            /** Format: decimal */
+            billed: string;
+            collection_rate: number | null;
+            /** Format: decimal */
+            commission_accrued: string;
+            status: string | null;
         };
         CollectedByWard: {
             ward_name: string;
             /** Format: decimal */
             collected: string;
+            payers: number;
+        };
+        CollectionsTrend: {
+            /** Format: date */
+            d: string;
+            /** Format: decimal */
+            amount: string;
         };
         CommissionSettlement: {
             readonly id: number;
@@ -1155,6 +1202,13 @@ export interface components {
             /** Format: decimal */
             outstanding: string;
             bills_by_status: components["schemas"]["BillsByStatus"][];
+            bills: number;
+            assessments: number;
+            payers: number;
+            active_agents: number;
+            by_channel: components["schemas"]["CollectedByChannel"][];
+            by_item: components["schemas"]["BilledByItem"][];
+            trend: components["schemas"]["CollectionsTrend"][];
         };
         DebtCase: {
             readonly id: number;
@@ -1243,6 +1297,26 @@ export interface components {
          * @enum {string}
          */
         FieldAgentStatusEnum: "ACTIVE" | "SUSPENDED" | "EXITED";
+        /**
+         * @description Cross-run view of exceptions — separate from ReconciliationExceptionSerializer
+         *     (nested under a run) since here each row needs to identify its own run.
+         */
+        GlobalException: {
+            readonly id: number;
+            readonly run: number;
+            readonly channel_code: string;
+            /** Format: date */
+            readonly run_date: string;
+            readonly feed_row: number | null;
+            readonly bank_txn_ref: string;
+            /** Format: decimal */
+            readonly amount: string;
+            readonly payment: number | null;
+            readonly note: string;
+            /** Format: date-time */
+            readonly resolved_at: string | null;
+            readonly resolved_by: number | null;
+        };
         HealthResponse: {
             status: string;
             service: string;
@@ -1279,6 +1353,7 @@ export interface components {
             readonly superseded_by: number | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly consultant_name: string;
             readonly superseded_count: number;
         };
         /**
@@ -1334,9 +1409,12 @@ export interface components {
         POSTerminal: {
             readonly id: number;
             terminal_id: string;
+            bank_terminal_id?: string;
             agent: number;
             ward: number;
             status?: components["schemas"]["POSTerminalStatusEnum"];
+            /** Format: decimal */
+            readonly collected: string;
         };
         /**
          * @description * `ACTIVE` - Active
@@ -1464,6 +1542,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["FieldAgent"][];
+        };
+        PaginatedGlobalExceptionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["GlobalException"][];
         };
         PaginatedPOSTerminalList: {
             /** @example 123 */
@@ -1652,6 +1745,8 @@ export interface components {
             readonly txn_status: components["schemas"]["TxnStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
+            readonly full_name: string;
+            readonly payer_ref: string;
         };
         PostPayment: {
             bill_id: number;
@@ -1661,6 +1756,7 @@ export interface components {
             channel_code: components["schemas"]["ChannelCodeEnum"];
             /** @default  */
             bank_txn_ref: string;
+            terminal_id?: number | null;
             geo?: {
                 [key: string]: unknown;
             };
@@ -1673,6 +1769,7 @@ export interface components {
             channel_code: components["schemas"]["ChannelCodeEnum"];
             /** @default  */
             bank_txn_ref: string;
+            terminal_id?: number | null;
             geo?: {
                 [key: string]: unknown;
             };
@@ -2995,6 +3092,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedReconciliationRunList"];
+                };
+            };
+        };
+    };
+    v1_reconciliation_exceptions_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                resolved?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGlobalExceptionList"];
                 };
             };
         };

@@ -15,4 +15,5 @@ export * from './components/TypeaheadPicker';
 export * from './components/GroupedPicker';
 export * from './components/KV';
 export * from './components/Notice';
+export * from './components/Charts';
 export * from './format';
