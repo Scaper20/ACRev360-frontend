@@ -18,11 +18,20 @@ import { TerminalsPage } from './routes/terminals/TerminalsPage';
 import { ChannelsPage } from './routes/channels/ChannelsPage';
 import { AuditPage } from './routes/audit/AuditPage';
 import { OnboardCouncilPage } from './routes/platform/OnboardCouncilPage';
+import { DemandBillPrint } from './routes/print/DemandBillPrint';
+import { DemandNoticePrint } from './routes/print/DemandNoticePrint';
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Genuinely public, unauthenticated — mirrors GET /api/v1/bills/{bill_ref}
+          itself being public (its own docstring: "Powers the demand-notice/
+          demand-bill print pages and USSD"). No AppShell/nav; DocViewer loads
+          these into an iframe from BillDetailModal, but they also work fine
+          visited directly. */}
+      <Route path="/print/demand-bill" element={<DemandBillPrint />} />
+      <Route path="/print/demand-notice" element={<DemandNoticePrint />} />
       <Route element={<RequireAuth />}>
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<DashboardPage />} />

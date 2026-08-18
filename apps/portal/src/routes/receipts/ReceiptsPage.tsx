@@ -1,10 +1,12 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { ClickableRow, KV, Modal, NumCell, TableWrap, dateTime, money2 } from '@acrev360/ui';
-import { useQuery } from '@tanstack/react-query';
+import { ClickableRow, KV, Modal, NumCell, TableWrap, dateTime, money2, useToast } from '@acrev360/ui';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 export function ReceiptsPage() {
   const [detail, setDetail] = useState<number | null>(null);
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ['receipts'],
     queryFn: async () => {
@@ -15,6 +17,20 @@ export function ReceiptsPage() {
   });
 
   const receipt = data?.find((r) => r.id === detail);
+
+  // GET /api/v1/verify/{qr_token} is a public endpoint — anyone with the
+  // token (e.g. off a printed receipt's QR/SMS code) can confirm it's real.
+  // This button exercises that same check from the admin side, matching
+  // what a bank or auditor could independently do.
+  async function verify(qrToken: string) {
+    const { data, error } = await apiClient.GET('/api/v1/verify/{qr_token}', { params: { path: { qr_token: qrToken } } });
+    if (error) {
+      toast(errorMessage(error), true);
+      return;
+    }
+    toast(`Valid — ${data.receipt_ref} · ${money2(data.amount)} · ${data.payer_name}`);
+    await queryClient.invalidateQueries({ queryKey: ['receipts'] });
+  }
 
   return (
     <>
@@ -60,7 +76,21 @@ export function ReceiptsPage() {
       </div>
 
       {receipt != null && (
-        <Modal open onClose={() => setDetail(null)} title={`Receipt — ${receipt.receipt_ref}`} footer={<button className="btn btn-ghost" onClick={() => setDetail(null)}>Close</button>}>
+        <Modal
+          open
+          onClose={() => setDetail(null)}
+          title={`Receipt — ${receipt.receipt_ref}`}
+          footer={
+            <>
+              <button className="btn btn-brass" onClick={() => verify(receipt.qr_token)}>
+                Verify
+              </button>
+              <button className="btn btn-ghost" onClick={() => setDetail(null)}>
+                Close
+              </button>
+            </>
+          }
+        >
           <KV label="Bill">
             <span className="num">{receipt.bill_ref}</span>
           </KV>

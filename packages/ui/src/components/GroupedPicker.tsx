@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './GroupedPicker.css';
 
 export interface GroupedItem {
@@ -83,6 +83,18 @@ export interface GroupedSelectProps<T extends GroupedItem> {
  * one line to a bill). */
 export function GroupedSelect<T extends GroupedItem>({ items, groupOrder, value, onChange }: GroupedSelectProps<T>) {
   const groups = useMemo(() => groupAndOrder(items, groupOrder), [items, groupOrder]);
+
+  // A <select> with no option matching its `value` falls back to displaying
+  // the first option anyway (native browser behavior) — but the caller's
+  // state stays at '' since nothing ever fired onChange. That silently
+  // desyncs "what's shown" from "what Add will actually submit", which
+  // surfaced live as an Add button stuck disabled despite an item visibly
+  // showing selected. Auto-select the first real item as soon as one's
+  // available, so the two can never drift apart.
+  useEffect(() => {
+    if (value === '' && items.length > 0) onChange(items[0].id);
+  }, [value, items, onChange]);
+
   return (
     <select value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {groups.map(([group, groupItems]) => (

@@ -1,13 +1,23 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, Input, KV, Modal, NumCell, Select, TableWrap, Tag, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Select, TableWrap, Tag, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
+import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral', PENDING: 'warn' };
 const STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'EXITED'];
+
+// A <button> styled to read as an inline text link, not href="javascript:void(0)"
+// — React 19 actively blocks javascript: URLs as an XSS hardening measure
+// (throws "React has blocked a javascript: URL as a security precaution."
+// on every click, confirmed live), so that old pattern is a real bug now,
+// not just dated style.
+const LINK_BUTTON_STYLE: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--danger)', fontWeight: 400, cursor: 'pointer', textDecoration: 'underline' };
 
 export function ConsultantsPage() {
   const { user } = useAuth();
@@ -19,6 +29,8 @@ export function ConsultantsPage() {
   const [name, setName] = useState('');
   const [contractRef, setContractRef] = useState('');
   const [rate, setRate] = useState('30');
+  const [addItemId, setAddItemId] = useState<number | ''>('');
+  const [addWard, setAddWard] = useState<number | ''>('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['consultants'],
@@ -28,6 +40,53 @@ export function ConsultantsPage() {
       return data.results;
     },
   });
+
+  const { data: revenueItems } = useRevenueItems();
+  const groupedItems = revenueItems ? toGroupedItems(revenueItems) : [];
+  const itemLookup = (id: number) => revenueItems?.find((i) => i.id === id);
+  const { data: wards } = useWards();
+  const wardName = wardNameLookup(wards);
+
+  const portfolioQuery = useQuery({
+    queryKey: ['consultants', 'portfolio', detailId],
+    enabled: detailId != null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/consultants/{id}/portfolio', { params: { path: { id: String(detailId) } } });
+      if (error) throw new Error(errorMessage(error));
+      return data;
+    },
+  });
+
+  async function addPortfolioItem() {
+    if (detailId == null || addItemId === '') return;
+    try {
+      const { error } = await apiClient.POST('/api/v1/consultants/{id}/portfolio', {
+        params: { path: { id: String(detailId) } },
+        body: { consultant: detailId, council_revenue_item: addItemId, ward: addWard === '' ? undefined : addWard },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast('Revenue item assigned');
+      setAddItemId('');
+      setAddWard('');
+      await queryClient.invalidateQueries({ queryKey: ['consultants', 'portfolio', detailId] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not assign revenue item', true);
+    }
+  }
+
+  async function revokePortfolioItem(portfolioId: number) {
+    if (detailId == null) return;
+    try {
+      const { error } = await apiClient.POST('/api/v1/consultants/{id}/portfolio/{portfolio_id}/end', {
+        params: { path: { id: String(detailId), portfolio_id: portfolioId } },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast('Assignment revoked');
+      await queryClient.invalidateQueries({ queryKey: ['consultants', 'portfolio', detailId] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not revoke assignment', true);
+    }
+  }
 
   async function onboard() {
     if (!name.trim() || !contractRef.trim()) {
@@ -158,6 +217,51 @@ export function ConsultantsPage() {
                 ))}
               </Select>
             </Field>
+          )}
+
+          <h3 style={{ margin: '18px 0 8px' }}>Assigned revenue items ({portfolioQuery.data?.length ?? 0})</h3>
+          {portfolioQuery.isLoading ? (
+            <div className="empty">Loading portfolio…</div>
+          ) : portfolioQuery.error ? (
+            <div className="notice notice-bad">{portfolioQuery.error instanceof Error ? portfolioQuery.error.message : 'Failed to load portfolio'}</div>
+          ) : portfolioQuery.data && portfolioQuery.data.length > 0 ? (
+            portfolioQuery.data.map((p) => {
+              const item = itemLookup(p.council_revenue_item);
+              return (
+                <KV key={p.id} label={item ? `${item.harmonised_code} — ${item.item_name}${p.ward != null ? ` · ${wardName(p.ward)}` : ''}` : `Revenue item #${p.council_revenue_item}`}>
+                  {isAdmin && (
+                    <button type="button" style={LINK_BUTTON_STYLE} onClick={() => revokePortfolioItem(p.id)}>
+                      revoke
+                    </button>
+                  )}
+                </KV>
+              );
+            })
+          ) : (
+            <div className="empty">No revenue items assigned yet</div>
+          )}
+
+          {isAdmin && (
+            <div className="row" style={{ marginTop: 14 }}>
+              <Field label="Add revenue item">
+                <GroupedSelect items={groupedItems} groupOrder={REVENUE_CATEGORY_ORDER} value={addItemId} onChange={setAddItemId} />
+              </Field>
+              <Field label="Ward (optional — leave blank for all wards)">
+                <select value={addWard} onChange={(e) => setAddWard(Number(e.target.value) || '')}>
+                  <option value="">— All wards —</option>
+                  {wards?.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.ward_name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="&nbsp;">
+                <button className="btn btn-ghost" type="button" onClick={addPortfolioItem} disabled={addItemId === ''}>
+                  Add
+                </button>
+              </Field>
+            </div>
           )}
         </Modal>
       )}

@@ -1,6 +1,7 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import { KV, Modal, money, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClose: () => void }) {
@@ -8,6 +9,7 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
   const wardName = wardNameLookup(wards);
   const toast = useToast();
   const queryClient = useQueryClient();
+  const [rollArrears, setRollArrears] = useState(false);
 
   const payerQuery = useQuery({
     queryKey: ['payers', 'detail', payerId],
@@ -29,9 +31,10 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
 
   async function issueHarmonizedBill() {
     try {
-      const { data, error } = await apiClient.POST('/api/v1/bills', { body: { payer_id: payerId, bill_all_drafts: true, roll_arrears: false } });
+      const { data, error } = await apiClient.POST('/api/v1/bills', { body: { payer_id: payerId, bill_all_drafts: true, roll_arrears: rollArrears } });
       if (error) throw new Error(errorMessage(error));
-      toast(`Harmonized bill issued — ${data.bill_ref} (${money(data.total_amount)})`);
+      toast(`Harmonized bill issued — ${data.bill_ref} (${money(data.total_amount)})` + (Number(data.arrears_amount) > 0 ? ` · ${money(data.arrears_amount)} arrears consolidated` : ''));
+      setRollArrears(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['payers', 'draft-assessments', payerId] }),
         queryClient.invalidateQueries({ queryKey: ['bills'] }),
@@ -65,9 +68,10 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
           <KV label="KYC status">{p.kyc_status}</KV>
 
           <h3 style={{ margin: '18px 0 8px' }}>Enumerated Revenue Items — not yet billed ({drafts.length})</h3>
-          {drafts.length === 0 ? (
+          {drafts.length === 0 && (
             <div className="empty">Nothing pending — enumerate revenue items for this payer to build one up</div>
-          ) : (
+          )}
+          {drafts.length > 0 && (
             <>
               {drafts.map((a) => (
                 <KV key={a.id} label={`${a.harmonised_code} — ${a.item_name}`}>
@@ -77,10 +81,16 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
               <KV label={<b>Total if billed now</b>}>
                 <span className="num">{money(draftsTotal)}</span>
               </KV>
-              <button className="btn btn-brass btn-sm" style={{ marginTop: 8 }} onClick={issueHarmonizedBill}>
-                Issue Harmonized Bill
-              </button>
             </>
+          )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, marginTop: 10 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={rollArrears} onChange={(e) => setRollArrears(e.target.checked)} />
+            Consolidate this payer&rsquo;s prior outstanding bills into this one (arrears brought forward)
+          </label>
+          {(drafts.length > 0 || rollArrears) && (
+            <button className="btn btn-brass btn-sm" style={{ marginTop: 8 }} onClick={issueHarmonizedBill}>
+              Issue Harmonized Bill
+            </button>
           )}
         </>
       )}

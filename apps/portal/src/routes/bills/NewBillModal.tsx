@@ -1,5 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import { Field, GroupedSelect, Input, Modal, Notice, TypeaheadPicker, money, useToast } from '@acrev360/ui';
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { searchPayers } from '../../lib/payerSearch';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
@@ -12,6 +13,13 @@ interface DraftLine {
 }
 
 type PayerHit = Awaited<ReturnType<typeof searchPayers>>[number];
+
+// A <button> styled to read as an inline text link, not href="javascript:void(0)"
+// — React 19 actively blocks javascript: URLs as an XSS hardening measure
+// (throws "React has blocked a javascript: URL as a security precaution."
+// on every click, confirmed live), so that old pattern is a real bug now,
+// not just dated style.
+const LINK_BUTTON_STYLE: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--danger)', marginLeft: 8, cursor: 'pointer', textDecoration: 'underline' };
 
 export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCreated: (billId: number) => void }) {
   const { data: revenueItems } = useRevenueItems();
@@ -117,9 +125,9 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
               </span>
               <b className="num">
                 {money(l.amount)}{' '}
-                <a href="javascript:void(0)" style={{ color: 'var(--danger)', marginLeft: 8 }} onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}>
+                <button type="button" style={LINK_BUTTON_STYLE} onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}>
                   remove
-                </a>
+                </button>
               </b>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Field, GroupedSelect, Input, KV, Modal, Notice, money, useToast } from '@acrev360/ui';
+import { DocViewer, Field, GroupedSelect, Input, KV, Modal, Notice, money, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
@@ -31,6 +31,7 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
   const [channel, setChannel] = useState('POS');
   const [bankRef, setBankRef] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [printDoc, setPrintDoc] = useState<'notice' | 'bill' | null>(null);
 
   const bill = detailQuery.data;
 
@@ -90,7 +91,29 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
   const canPay = bill != null && PAYABLE_STATUSES.has(bill.status) && (isAdmin || user?.access_level === 'CONSULTANT');
 
   return (
-    <Modal open onClose={onClose} title={bill ? `Bill — ${bill.bill_ref}` : 'Bill'} footer={<button className="btn btn-ghost" onClick={onClose}>Close</button>}>
+    <>
+    <Modal
+      open
+      onClose={onClose}
+      title={bill ? `Bill — ${bill.bill_ref}` : 'Bill'}
+      footer={
+        <>
+          {bill != null && (
+            <>
+              <button className="btn btn-ghost" onClick={() => setPrintDoc('notice')}>
+                Print Notice
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPrintDoc('bill')}>
+                Print Bill
+              </button>
+            </>
+          )}
+          <button className="btn btn-ghost" onClick={onClose}>
+            Close
+          </button>
+        </>
+      }
+    >
       {detailQuery.isLoading || !bill ? (
         <div className="empty">Loading…</div>
       ) : (
@@ -178,5 +201,14 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
         </>
       )}
     </Modal>
+    {bill != null && (
+      <DocViewer
+        open={printDoc != null}
+        onClose={() => setPrintDoc(null)}
+        title={printDoc === 'notice' ? 'Print Preview — Demand Notice' : 'Print Preview — Demand Bill'}
+        src={printDoc != null ? `/print/demand-${printDoc}?bill=${encodeURIComponent(bill.bill_ref)}` : null}
+      />
+    )}
+    </>
   );
 }
