@@ -1,10 +1,16 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { KV, Modal, money, useToast } from '@acrev360/ui';
+import type { components } from '@acrev360/api';
+import { Field, KV, Modal, Select, money, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
+const KYC_STATUSES = ['PENDING', 'VERIFIED', 'FLAGGED'];
+
 export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClose: () => void }) {
+  const { user } = useAuth();
+  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const { data: wards } = useWards();
   const wardName = wardNameLookup(wards);
   const toast = useToast();
@@ -44,12 +50,63 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
     }
   }
 
+  async function changeKyc(status: string) {
+    try {
+      const { error } = await apiClient.POST('/api/v1/payers/{id}/kyc-status', {
+        params: { path: { id: String(payerId) } },
+        body: { kyc_status: status as components['schemas']['KycStatusEnum'] },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast(`KYC status set to ${status}`);
+      await queryClient.invalidateQueries({ queryKey: ['payers'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not change KYC status', true);
+    }
+  }
+
+  async function deletePayer() {
+    if (p == null) return;
+    if (!window.confirm(`Delete ${p.full_name} (${p.payer_ref})? This can't be undone.`)) return;
+    try {
+      const { error, response } = await apiClient.DELETE('/api/v1/payers/{id}', { params: { path: { id: String(payerId) } } });
+      if (error) {
+        if (response.status === 409 && 'error' in error) throw new Error((error as { error: string }).error);
+        throw new Error(errorMessage(error));
+      }
+      toast(`${p.payer_ref} deleted`);
+      // Close before invalidating — otherwise this modal's own now-404ing
+      // detail/drafts queries are still "active" and get swept into the
+      // invalidation's refetch, which then sits out their retry/backoff
+      // before onClose() ever runs.
+      onClose();
+      await queryClient.invalidateQueries({ queryKey: ['payers'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not delete payer', true);
+    }
+  }
+
   const p = payerQuery.data;
   const drafts = draftsQuery.data ?? [];
   const draftsTotal = drafts.reduce((sum, a) => sum + Number(a.amount), 0);
 
   return (
-    <Modal open onClose={onClose} title={p?.full_name ?? 'Payer'} footer={<button className="btn btn-ghost" onClick={onClose}>Close</button>}>
+    <Modal
+      open
+      onClose={onClose}
+      title={p?.full_name ?? 'Payer'}
+      footer={
+        <>
+          {isAdmin && p != null && (
+            <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={deletePayer}>
+              Delete
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={onClose}>
+            Close
+          </button>
+        </>
+      }
+    >
       {payerQuery.isLoading || !p ? (
         <div className="empty">Loading…</div>
       ) : (
@@ -65,7 +122,19 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
           <KV label="Phone">
             <span className="num">{p.phone || '—'}</span>
           </KV>
-          <KV label="KYC status">{p.kyc_status}</KV>
+          {isAdmin ? (
+            <Field label="KYC status">
+              <Select value={p.kyc_status} onChange={(e) => changeKyc(e.target.value)}>
+                {KYC_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : (
+            <KV label="KYC status">{p.kyc_status}</KV>
+          )}
 
           <h3 style={{ margin: '18px 0 8px' }}>Enumerated Revenue Items — not yet billed ({drafts.length})</h3>
           {drafts.length === 0 && (

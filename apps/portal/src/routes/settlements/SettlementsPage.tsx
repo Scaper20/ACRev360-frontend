@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { TagVariant } from '@acrev360/ui';
-import { Button, ClickableRow, Field, KV, Modal, NumCell, Tag, money2, shortDate, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, KV, Modal, NumCell, Pagination, Tag, money2, shortDate, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
@@ -17,13 +17,14 @@ export function SettlementsPage() {
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['settlements'],
+    queryKey: ['settlements', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/settlements', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/settlements', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -57,7 +58,7 @@ export function SettlementsPage() {
     }
   }
 
-  const settlement = data?.find((s) => s.id === detailId);
+  const settlement = data?.results.find((s) => s.id === detailId);
 
   return (
     <>
@@ -88,8 +89,8 @@ export function SettlementsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((s) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((s) => (
                     <ClickableRow key={s.id} onClick={() => setDetailId(s.id)}>
                       <td>{s.consultant_name}</td>
                       <NumCell>
@@ -114,6 +115,7 @@ export function SettlementsPage() {
             </table>
           )}
         </div>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {computeOpen && (

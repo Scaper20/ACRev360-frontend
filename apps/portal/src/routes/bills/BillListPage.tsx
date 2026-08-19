@@ -1,5 +1,5 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Button, ClickableRow, NumCell, TableWrap, money, shortDate } from '@acrev360/ui';
+import { Button, ClickableRow, NumCell, Pagination, TableWrap, money, shortDate } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BillDetailModal } from './BillDetailModal';
@@ -17,22 +17,31 @@ const TAG_FOR: Record<string, string> = {
 
 export function BillListPage() {
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
   const [openNew, setOpenNew] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['bills', status],
+    queryKey: ['bills', status, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { status: status || undefined } } });
+      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { status: status || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
   return (
     <>
       <div className="toolbar">
-        <select className="grow" style={{ maxWidth: 220 }} value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select
+          className="grow"
+          style={{ maxWidth: 220 }}
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+        >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -65,8 +74,8 @@ export function BillListPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((b) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((b) => (
                     <ClickableRow key={b.id} onClick={() => setDetailId(b.id)}>
                       <NumCell>{b.bill_ref}</NumCell>
                       <td>{b.full_name}</td>
@@ -90,6 +99,7 @@ export function BillListPage() {
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {openNew && <NewBillModal onClose={() => setOpenNew(false)} onCreated={(id) => setDetailId(id)} />}

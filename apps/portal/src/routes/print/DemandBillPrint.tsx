@@ -109,17 +109,23 @@ export function DemandBillPrint() {
             </tr>
           </thead>
           <tbody>
-            {bill.lines.map((l, i) => (
-              <tr key={l.id}>
-                <td>{year}</td>
-                <td className="num">{lineRef(billRefDigits, i + 1, l.harmonised_code)}</td>
-                <td>{l.item_name}</td>
-                <td className="num">{money2(0)}</td>
-                <td className="num">{money2(l.line_amount)}</td>
-                <td className="num">{money2(0)}</td>
-                <td className="num">{money2(l.line_amount)}</td>
-              </tr>
-            ))}
+            {bill.lines.map((l, i) => {
+              const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
+              return (
+                <tr key={l.id}>
+                  <td>{year}</td>
+                  <td className="num">{lineRef(billRefDigits, i + 1, l.harmonised_code)}</td>
+                  <td>
+                    {l.item_name}
+                    {bandNote}
+                  </td>
+                  <td className="num">{money2(0)}</td>
+                  <td className="num">{money2(l.line_amount)}</td>
+                  <td className="num">{money2(0)}</td>
+                  <td className="num">{money2(l.line_amount)}</td>
+                </tr>
+              );
+            })}
             {arrears > 0 && (
               <tr>
                 <td>{year}</td>

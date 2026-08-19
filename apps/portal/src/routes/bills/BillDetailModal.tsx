@@ -71,6 +71,27 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
     }
   }
 
+  async function deleteBill() {
+    if (bill == null) return;
+    if (!window.confirm(`Delete bill ${bill.bill_ref}? This can't be undone.`)) return;
+    try {
+      const { error, response } = await apiClient.DELETE('/api/v1/bills/{id}', { params: { path: { id: String(billId) } } });
+      if (error) {
+        if (response.status === 409 && 'error' in error) throw new Error((error as { error: string }).error);
+        throw new Error(errorMessage(error));
+      }
+      toast(`${bill.bill_ref} deleted`);
+      // Close before invalidating — otherwise this modal's own now-404ing
+      // detail query is still "active" and gets swept into the
+      // invalidation's refetch, which then sits out its retry/backoff
+      // before onClose() ever runs.
+      onClose();
+      await queryClient.invalidateQueries({ queryKey: ['bills'] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete bill');
+    }
+  }
+
   async function recordPayment() {
     const amount = Number(payAmount);
     if (!amount || amount <= 0) {
@@ -110,6 +131,11 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
               <button className="btn btn-ghost" onClick={() => setPrintDoc('bill')}>
                 Print Bill
               </button>
+              {isAdmin && (
+                <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={deleteBill}>
+                  Delete
+                </button>
+              )}
             </>
           )}
           <button className="btn btn-ghost" onClick={onClose}>

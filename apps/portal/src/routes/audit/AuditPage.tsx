@@ -1,14 +1,16 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { NumCell, TableWrap, dateTime } from '@acrev360/ui';
+import { NumCell, Pagination, TableWrap, dateTime } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 export function AuditPage() {
+  const [page, setPage] = useState(1);
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit'],
+    queryKey: ['audit', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/audit', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/audit', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -31,8 +33,8 @@ export function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {data && data.length > 0 ? (
-                data.map((a) => (
+              {data && data.results.length > 0 ? (
+                data.results.map((a) => (
                   <tr key={a.id}>
                     <NumCell>{dateTime(a.created_at)}</NumCell>
                     <td>{a.actor_username || '—'}</td>
@@ -56,6 +58,7 @@ export function AuditPage() {
           </table>
         )}
       </TableWrap>
+      {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
     </div>
   );
 }

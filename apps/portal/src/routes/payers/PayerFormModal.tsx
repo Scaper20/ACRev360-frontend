@@ -25,7 +25,9 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const [duplicate, setDuplicate] = useState<{ full_name: string; payer_ref: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const groupedItems = revenueItems ? toGroupedItems(revenueItems) : [];
+  const flatRateItems = revenueItems?.filter((i) => (i.rate_bands?.length ?? 0) === 0) ?? [];
+  const bandedItemCount = (revenueItems?.length ?? 0) - flatRateItems.length;
+  const groupedItems = toGroupedItems(flatRateItems);
 
   async function submit(force = false) {
     if (!fullName.trim()) {
@@ -142,6 +144,12 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
           }
         />
       </Field>
+      {bandedItemCount > 0 && (
+        <Notice variant="info">
+          {bandedItemCount} item{bandedItemCount === 1 ? '' : 's'} priced by band or tier (e.g. shop size, business turnover) aren&rsquo;t listed above — register the payer first, then add
+          {bandedItemCount === 1 ? ' it' : ' those'} from the bill screen, where the correct band can be selected.
+        </Notice>
+      )}
       {error != null && <Notice variant="bad">{error}</Notice>}
       {duplicate != null && (
         <Notice variant="bad">

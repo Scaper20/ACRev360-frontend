@@ -228,6 +228,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1_bills_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bills/{id}/detail": {
         parameters: {
             query?: never;
@@ -585,7 +601,7 @@ export interface paths {
         get: operations["v1_payers_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["v1_payers_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -607,6 +623,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payers/{id}/kyc-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Only COUNCIL_ADMIN may move a payer through KYC review — there was
+         *     previously no path to this at all (kyc_status was write-once at
+         *     creation, always PENDING).
+         */
+        post: operations["v1_payers_kyc_status_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments": {
         parameters: {
             query?: never;
@@ -617,6 +654,39 @@ export interface paths {
         get: operations["v1_payments_list"];
         put?: never;
         post: operations["v1_payments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Only COUNCIL_ADMIN may reverse a payment — see reverse_payment(). */
+        post: operations["v1_payments_reverse_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1394,6 +1464,9 @@ export interface components {
          * @enum {string}
          */
         KycStatusEnum: "PENDING" | "VERIFIED" | "FLAGGED";
+        KycStatusRequest: {
+            kyc_status: components["schemas"]["KycStatusEnum"];
+        };
         LogoutRequestRequest: {
             refresh: string;
         };
@@ -1778,6 +1851,10 @@ export interface components {
             readonly created_at: string;
             readonly full_name: string;
             readonly payer_ref: string;
+            terminal?: number | null;
+            readonly terminal_code: string;
+            posted_by?: number | null;
+            readonly posted_by_name: string;
         };
         PostPayment: {
             bill_id: number;
@@ -1954,6 +2031,10 @@ export interface components {
             readonly category_name: string;
             unit_of_charge: string;
             in_initial_scope?: boolean;
+        };
+        ReversePaymentRequest: {
+            /** @default  */
+            reason: string;
         };
         RunReconciliationRequest: {
             /** Format: date */
@@ -2489,6 +2570,26 @@ export interface operations {
             };
             /** @description No response body */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_bills_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3077,6 +3178,26 @@ export interface operations {
             };
         };
     };
+    v1_payers_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_payers_draft_assessments_list: {
         parameters: {
             query?: never;
@@ -3098,11 +3219,50 @@ export interface operations {
             };
         };
     };
+    v1_payers_kyc_status_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KycStatusRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["KycStatusRequest"];
+                "multipart/form-data": components["schemas"]["KycStatusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payer"];
+                };
+            };
+        };
+    };
     v1_payments_list: {
         parameters: {
             query?: {
+                /** @description Filter by channel code */
+                channel?: string;
+                /** @description Only payments on/after this date */
+                date_from?: string;
+                /** @description Only payments on/before this date */
+                date_to?: string;
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Filter to one payer's payments */
+                payer?: number;
+                /** @description Search by payment ref, bill ref or payer name */
+                q?: string;
+                /** @description Filter by txn_status */
+                status?: string;
             };
             header?: never;
             path?: never;
@@ -3141,6 +3301,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PostPayment"];
+                };
+            };
+        };
+    };
+    v1_payments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+        };
+    };
+    v1_payments_reverse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReversePaymentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReversePaymentRequest"];
+                "multipart/form-data": components["schemas"]["ReversePaymentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
                 };
             };
         };

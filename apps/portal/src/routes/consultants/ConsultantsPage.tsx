@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Select, TableWrap, Tag, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -31,13 +31,14 @@ export function ConsultantsPage() {
   const [rate, setRate] = useState('30');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['consultants'],
+    queryKey: ['consultants', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -120,7 +121,7 @@ export function ConsultantsPage() {
     }
   }
 
-  const consultant = data?.find((c) => c.id === detailId);
+  const consultant = data?.results.find((c) => c.id === detailId);
 
   return (
     <>
@@ -149,20 +150,29 @@ export function ConsultantsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data?.map((c) => (
-                  <ClickableRow key={c.id} onClick={() => setDetailId(c.id)}>
-                    <td>{c.consultant_name}</td>
-                    <NumCell>{c.contract_ref}</NumCell>
-                    <NumCell className="r">{c.commission_rate}%</NumCell>
-                    <td>
-                      <Tag variant={STATUS_TAG[c.status] ?? 'neutral'}>{c.status}</Tag>
+                {data && data.results.length > 0 ? (
+                  data.results.map((c) => (
+                    <ClickableRow key={c.id} onClick={() => setDetailId(c.id)}>
+                      <td>{c.consultant_name}</td>
+                      <NumCell>{c.contract_ref}</NumCell>
+                      <NumCell className="r">{c.commission_rate}%</NumCell>
+                      <td>
+                        <Tag variant={STATUS_TAG[c.status] ?? 'neutral'}>{c.status}</Tag>
+                      </td>
+                    </ClickableRow>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="empty">
+                      No consultants onboarded
                     </td>
-                  </ClickableRow>
-                ))}
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {onboardOpen && (

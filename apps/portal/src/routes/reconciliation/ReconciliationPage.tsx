@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { GlobalExceptionList } from '@acrev360/api';
-import { Button, Card, ClickableRow, Field, KV, Modal, NumCell, Select, TableWrap, Tag, money2, shortDate, useToast } from '@acrev360/ui';
+import { Button, Card, ClickableRow, Field, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, money2, shortDate, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
@@ -16,13 +16,14 @@ export function ReconciliationPage() {
   const [runOpen, setRunOpen] = useState(false);
   const [runDate, setRunDate] = useState('');
   const [runChannel, setRunChannel] = useState(CHANNELS[0]);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['reconciliation'],
+    queryKey: ['reconciliation', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/reconciliation', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/reconciliation', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -49,7 +50,7 @@ export function ReconciliationPage() {
     }
   }
 
-  const run = data?.find((r) => r.id === detailId);
+  const run = data?.results.find((r) => r.id === detailId);
 
   return (
     <>
@@ -81,8 +82,8 @@ export function ReconciliationPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((r) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((r) => (
                     <ClickableRow key={r.id} onClick={() => setDetailId(r.id)}>
                       <td>{r.channel_code}</td>
                       <NumCell>{shortDate(r.run_date)}</NumCell>
@@ -105,6 +106,7 @@ export function ReconciliationPage() {
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </Card>
 
       <Card>

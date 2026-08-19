@@ -16,4 +16,5 @@ export * from './components/GroupedPicker';
 export * from './components/KV';
 export * from './components/Notice';
 export * from './components/Charts';
+export * from './components/Pagination';
 export * from './format';

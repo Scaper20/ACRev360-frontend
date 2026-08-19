@@ -1,22 +1,23 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { ClickableRow, KV, Modal, NumCell, TableWrap, dateTime, money2, useToast } from '@acrev360/ui';
+import { ClickableRow, KV, Modal, NumCell, Pagination, TableWrap, dateTime, money2, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 export function ReceiptsPage() {
   const [detail, setDetail] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
   const toast = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['receipts'],
+    queryKey: ['receipts', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/receipts', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/receipts', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
-  const receipt = data?.find((r) => r.id === detail);
+  const receipt = data?.results.find((r) => r.id === detail);
 
   // GET /api/v1/verify/{qr_token} is a public endpoint — anyone with the
   // token (e.g. off a printed receipt's QR/SMS code) can confirm it's real.
@@ -52,8 +53,8 @@ export function ReceiptsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((r) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((r) => (
                     <ClickableRow key={r.id} onClick={() => setDetail(r.id)}>
                       <NumCell>{r.receipt_ref}</NumCell>
                       <NumCell>{r.bill_ref}</NumCell>
@@ -73,6 +74,7 @@ export function ReceiptsPage() {
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {receipt != null && (

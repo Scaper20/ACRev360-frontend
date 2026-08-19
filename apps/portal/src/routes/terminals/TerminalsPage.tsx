@@ -1,23 +1,25 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { NumCell, TableWrap, Tag, money } from '@acrev360/ui';
+import { NumCell, Pagination, TableWrap, Tag, money } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { agentCodeLookup, useAgents } from '../../lib/agents';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', FAULTY: 'bad', RETIRED: 'neutral' };
 
 export function TerminalsPage() {
+  const [page, setPage] = useState(1);
   const { data: wards } = useWards();
   const wardName = wardNameLookup(wards);
   const { data: agents } = useAgents();
   const agentCode = agentCodeLookup(agents);
   const { data, isLoading, error } = useQuery({
-    queryKey: ['terminals'],
+    queryKey: ['terminals', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/terminals', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/terminals', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -41,8 +43,8 @@ export function TerminalsPage() {
               </tr>
             </thead>
             <tbody>
-              {data && data.length > 0 ? (
-                data.map((t) => (
+              {data && data.results.length > 0 ? (
+                data.results.map((t) => (
                   <tr key={t.id}>
                     <NumCell>{t.terminal_id}</NumCell>
                     <NumCell>{t.bank_terminal_id || '—'}</NumCell>
@@ -65,6 +67,7 @@ export function TerminalsPage() {
           </table>
         )}
       </TableWrap>
+      {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
     </div>
   );
 }

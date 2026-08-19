@@ -1,5 +1,5 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Button, ClickableRow, NumCell, TableWrap } from '@acrev360/ui';
+import { Button, ClickableRow, NumCell, Pagination, TableWrap } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useWards, wardNameLookup } from '../../lib/wards';
@@ -15,24 +15,30 @@ import { PayerFormModal } from './PayerFormModal';
  */
 export function PayerListPage() {
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [registerType, setRegisterType] = useState<'INDIVIDUAL' | 'BUSINESS' | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
   const { data: wards } = useWards();
   const wardName = wardNameLookup(wards);
 
   const { data, error, isLoading } = useQuery({
-    queryKey: ['payers', q],
+    queryKey: ['payers', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/payers', { params: { query: { q: q || undefined } } });
+      const { data, error } = await apiClient.GET('/api/v1/payers', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   return (
     <>
       <div className="toolbar">
-        <input className="grow" autoComplete="off" placeholder="Search by name, payer ref or phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="grow" autoComplete="off" placeholder="Search by name, payer ref or phone…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
         <Button onClick={() => setRegisterType('INDIVIDUAL')}>Register Individual</Button>
         <Button variant="primary" onClick={() => setRegisterType('BUSINESS')}>
           Register Business
@@ -57,8 +63,8 @@ export function PayerListPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((p) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((p) => (
                     <ClickableRow key={p.id} onClick={() => setDetailId(p.id)}>
                       <NumCell>{p.payer_ref}</NumCell>
                       <td>{p.full_name}</td>
@@ -81,6 +87,7 @@ export function PayerListPage() {
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {registerType != null && <PayerFormModal payerType={registerType} onClose={() => setRegisterType(null)} />}

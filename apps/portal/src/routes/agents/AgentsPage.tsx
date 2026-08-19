@@ -1,5 +1,5 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Button, ClickableRow, Field, Input, KV, Modal, NumCell, TableWrap, Tag, dateTime, money, money2, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, Input, KV, Modal, NumCell, Pagination, TableWrap, Tag, dateTime, money, money2, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -18,13 +18,14 @@ export function AgentsPage() {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [ward, setWard] = useState<number | ''>('');
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['agents'],
+    queryKey: ['agents', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/agents', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/agents', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -55,7 +56,7 @@ export function AgentsPage() {
     },
   });
 
-  const agent = data?.find((a) => a.id === detailId);
+  const agent = data?.results.find((a) => a.id === detailId);
 
   async function onboard() {
     if (!fullName.trim() || !username.trim()) {
@@ -104,8 +105,8 @@ export function AgentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((a) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((a) => (
                     <ClickableRow key={a.id} onClick={() => setDetailId(a.id)}>
                       <NumCell>{a.agent_code}</NumCell>
                       <td>{a.assigned_ward != null ? wardName(a.assigned_ward) : '—'}</td>
@@ -127,6 +128,7 @@ export function AgentsPage() {
             </table>
           )}
         </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {onboardOpen && (

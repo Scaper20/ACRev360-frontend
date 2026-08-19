@@ -21,16 +21,35 @@ export interface RevenueItemPickerItem extends GroupedItem {
   rateAmount: string;
 }
 
-export function toGroupedItems(items: { id: number; category_name: string; harmonised_code: string; item_name: string; current_rate: string }[]): RevenueItemPickerItem[] {
-  return items.map((i) => ({
-    id: i.id,
-    groupLabel: i.category_name,
-    searchText: `${i.harmonised_code} — ${i.item_name} (${money(i.current_rate)})`,
-    render: (
-      <>
-        {i.harmonised_code} — {i.item_name} ({money(i.current_rate)})
-      </>
-    ),
-    rateAmount: i.current_rate,
-  }));
+interface GroupableRevenueItem {
+  id: number;
+  category_name: string;
+  harmonised_code: string;
+  item_name: string;
+  current_rate: string;
+  rate_bands?: { id: number }[];
+}
+
+/** A banded item's own current_rate is a stale leftover from before it was
+ * banded (replace_rate_bands never touches the plain RateSchedule row) — it
+ * no longer reflects what the item actually costs, so showing it here would
+ * be actively misleading. Show the band count instead; the picker that
+ * consumes this (RevenueItemLinePicker) resolves the real price once a band
+ * is chosen. */
+export function toGroupedItems(items: GroupableRevenueItem[]): RevenueItemPickerItem[] {
+  return items.map((i) => {
+    const bandCount = i.rate_bands?.length ?? 0;
+    const priceLabel = bandCount > 0 ? `${bandCount} band${bandCount === 1 ? '' : 's'}` : money(i.current_rate);
+    return {
+      id: i.id,
+      groupLabel: i.category_name,
+      searchText: `${i.harmonised_code} — ${i.item_name} (${priceLabel})`,
+      render: (
+        <>
+          {i.harmonised_code} — {i.item_name} ({priceLabel})
+        </>
+      ),
+      rateAmount: i.current_rate,
+    };
+  });
 }

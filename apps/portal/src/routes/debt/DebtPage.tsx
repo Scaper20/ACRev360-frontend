@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, Input, KV, Modal, Notice, NumCell, Tag, money, money2, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, Input, KV, Modal, Notice, NumCell, Pagination, Tag, money, money2, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
@@ -18,13 +18,14 @@ export function DebtPage() {
   const [channel, setChannel] = useState('POS');
   const [bankRef, setBankRef] = useState('');
   const [payError, setPayError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['debt'],
+    queryKey: ['debt', page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/debt', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/debt', { params: { query: { page } } });
       if (error) throw new Error(errorMessage(error));
-      return data.results;
+      return data;
     },
   });
 
@@ -79,7 +80,7 @@ export function DebtPage() {
     }
   }
 
-  const debtCase = data?.find((d) => d.id === detailId);
+  const debtCase = data?.results.find((d) => d.id === detailId);
 
   return (
     <>
@@ -108,8 +109,8 @@ export function DebtPage() {
                 </tr>
               </thead>
               <tbody>
-                {data && data.length > 0 ? (
-                  data.map((d) => (
+                {data && data.results.length > 0 ? (
+                  data.results.map((d) => (
                     <ClickableRow key={d.id} onClick={() => setDetailId(d.id)}>
                       <NumCell>{d.bill_ref}</NumCell>
                       <td>{d.full_name}</td>
@@ -132,6 +133,7 @@ export function DebtPage() {
             </table>
           )}
         </div>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
       </div>
 
       {debtCase != null && (
