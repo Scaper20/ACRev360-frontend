@@ -789,6 +789,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/revenue-items/{id}/rate-bands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Replaces this item's whole band set — see replace_rate_bands. Posting
+         *     {"bands": []} clears banding and reverts the item to plain FLAT pricing.
+         */
+        post: operations["v1_revenue_items_rate_bands_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settlements": {
         parameters: {
             query?: never;
@@ -923,6 +943,10 @@ export interface components {
              * @default 1.00
              */
             quantity: string;
+            rate_band_id?: number | null;
+            rate_tier_id?: number | null;
+            /** Format: decimal */
+            amount_override?: string | null;
         };
         /**
          * @description * `0_30` - 0-30 days
@@ -1020,6 +1044,8 @@ export interface components {
             readonly quantity: string;
             /** Format: decimal */
             line_amount: string;
+            readonly band_label: string;
+            readonly tier_label: string;
         };
         BillLineEntryRequest: {
             revenue_item_id: number;
@@ -1028,6 +1054,10 @@ export interface components {
              * @default 1.00
              */
             quantity: string;
+            rate_band_id?: number | null;
+            rate_tier_id?: number | null;
+            /** Format: decimal */
+            amount_override?: string | null;
         };
         BilledByItem: {
             item_name: string;
@@ -1176,6 +1206,7 @@ export interface components {
             /** Format: decimal */
             readonly current_rate: string;
             readonly rate_id: number;
+            readonly rate_bands: components["schemas"]["RateBand"][];
         };
         CreatePayerRequest: {
             payer_type: components["schemas"]["PayerTypeEnum"];
@@ -1798,6 +1829,65 @@ export interface components {
             ward_name: string;
             lines: components["schemas"]["BillLineDetail"][];
         };
+        RateBand: {
+            readonly id: number;
+            /** @description The gazette's sub-classification name, e.g. 'Beer parlor'. Blank only when the item has exactly one band standing in for the whole item (no sub-classification), e.g. Communication Mast's single Large/Medium/Small triple. */
+            readonly label: string;
+            readonly sort_order: number;
+            readonly rate_mode: components["schemas"]["RateBandRateModeEnum"];
+            /** Format: decimal */
+            readonly flat_amount: string | null;
+            /** Format: decimal */
+            readonly min_amount: string | null;
+            /** Format: decimal */
+            readonly max_amount: string | null;
+            readonly tiers: components["schemas"]["RateTier"][];
+        };
+        /**
+         * @description * `FLAT` - FLAT
+         *     * `RANGE` - RANGE
+         *     * `TIERED` - TIERED
+         * @enum {string}
+         */
+        RateBandEntryRateModeEnum: "FLAT" | "RANGE" | "TIERED";
+        /**
+         * @description One band in a `POST .../rate-bands` replacement set. `label` may be blank
+         *     only when this is the item's single band (no gazetted sub-classification).
+         *     Which of flat_amount / min_amount+max_amount / tiers is required depends on
+         *     rate_mode — validated in apps.revenue.services._validate_band_spec, not here,
+         *     so the error message can name the offending band by label.
+         */
+        RateBandEntryRequest: {
+            /** @default  */
+            label: string;
+            rate_mode: components["schemas"]["RateBandEntryRateModeEnum"];
+            /** Format: decimal */
+            flat_amount?: string | null;
+            /** Format: decimal */
+            min_amount?: string | null;
+            /** Format: decimal */
+            max_amount?: string | null;
+            tiers?: components["schemas"]["RateTierEntryRequest"][];
+        };
+        /**
+         * @description * `FLAT` - Flat
+         *     * `RANGE` - Range
+         *     * `TIERED` - Tiered
+         * @enum {string}
+         */
+        RateBandRateModeEnum: "FLAT" | "RANGE" | "TIERED";
+        RateTier: {
+            readonly id: number;
+            readonly label: string;
+            /** Format: decimal */
+            readonly amount: string;
+            readonly sort_order: number;
+        };
+        RateTierEntryRequest: {
+            label: string;
+            /** Format: decimal */
+            amount: string;
+        };
         Receipt: {
             readonly id: number;
             readonly receipt_ref: string;
@@ -1845,6 +1935,9 @@ export interface components {
          * @enum {string}
          */
         ReconciliationRunStatusEnum: "OPEN" | "BALANCED" | "EXCEPTIONS" | "CLOSED";
+        ReplaceRateBandsRequest: {
+            bands?: components["schemas"]["RateBandEntryRequest"][];
+        };
         ResolveExceptionRequest: {
             note: string;
         };
@@ -3272,6 +3365,33 @@ export interface operations {
                 "application/json": components["schemas"]["ChangeRateRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["ChangeRateRequest"];
                 "multipart/form-data": components["schemas"]["ChangeRateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouncilRevenueItem"];
+                };
+            };
+        };
+    };
+    v1_revenue_items_rate_bands_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReplaceRateBandsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReplaceRateBandsRequest"];
+                "multipart/form-data": components["schemas"]["ReplaceRateBandsRequest"];
             };
         };
         responses: {

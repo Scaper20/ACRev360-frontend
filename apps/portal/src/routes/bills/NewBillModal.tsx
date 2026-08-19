@@ -1,16 +1,13 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Field, GroupedSelect, Input, Modal, Notice, TypeaheadPicker, money, useToast } from '@acrev360/ui';
+import { Field, Modal, Notice, TypeaheadPicker, money, useToast } from '@acrev360/ui';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { searchPayers } from '../../lib/payerSearch';
-import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
+import { useRevenueItems } from '../../lib/revenueItems';
+import type { LineToAdd } from './RevenueItemLinePicker';
+import { RevenueItemLinePicker } from './RevenueItemLinePicker';
 
-interface DraftLine {
-  revenueItemId: number;
-  label: string;
-  quantity: number;
-  amount: number;
-}
+type DraftLine = LineToAdd;
 
 type PayerHit = Awaited<ReturnType<typeof searchPayers>>[number];
 
@@ -24,21 +21,12 @@ const LINK_BUTTON_STYLE: CSSProperties = { background: 'none', border: 'none', p
 export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCreated: (billId: number) => void }) {
   const { data: revenueItems } = useRevenueItems();
   const toast = useToast();
-  const groupedItems = revenueItems ? toGroupedItems(revenueItems) : [];
 
   const [payer, setPayer] = useState<PayerHit | null>(null);
-  const [itemId, setItemId] = useState<number | ''>('');
-  const [qty, setQty] = useState(1);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [rollArrears, setRollArrears] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  function addLine() {
-    const item = revenueItems?.find((i) => i.id === itemId);
-    if (!item) return;
-    setLines((prev) => [...prev, { revenueItemId: item.id, label: item.item_name, quantity: qty, amount: Number(item.current_rate) * qty }]);
-  }
 
   async function submit() {
     if (!payer) {
@@ -55,7 +43,13 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
       const { data, error } = await apiClient.POST('/api/v1/bills', {
         body: {
           payer_id: payer.id,
-          lines: lines.map((l) => ({ revenue_item_id: l.revenueItemId, quantity: String(l.quantity) })),
+          lines: lines.map((l) => ({
+            revenue_item_id: l.revenueItemId,
+            quantity: String(l.quantity),
+            rate_band_id: l.rateBandId,
+            rate_tier_id: l.rateTierId,
+            amount_override: l.amountOverride,
+          })),
           bill_all_drafts: false,
           roll_arrears: rollArrears,
         },
@@ -104,17 +98,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
         </div>
       )}
 
-      <div className="row">
-        <Field label="Revenue item">
-          <GroupedSelect items={groupedItems} groupOrder={REVENUE_CATEGORY_ORDER} value={itemId} onChange={setItemId} />
-        </Field>
-        <Field label="Qty">
-          <Input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value) || 1)} style={{ maxWidth: 90 }} />
-        </Field>
-        <button className="btn btn-ghost" onClick={addLine} type="button">
-          Add line
-        </button>
-      </div>
+      <RevenueItemLinePicker items={revenueItems ?? []} onAdd={(line) => setLines((prev) => [...prev, line])} />
 
       {lines.length > 0 && (
         <div style={{ marginTop: 8 }}>

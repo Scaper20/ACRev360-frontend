@@ -1,10 +1,12 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { DocViewer, Field, GroupedSelect, Input, KV, Modal, Notice, money, useToast } from '@acrev360/ui';
+import { DocViewer, Field, Input, KV, Modal, Notice, money, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
+import { useRevenueItems } from '../../lib/revenueItems';
+import type { LineToAdd } from './RevenueItemLinePicker';
+import { RevenueItemLinePicker } from './RevenueItemLinePicker';
 
 const PAYABLE_STATUSES = new Set(['ISSUED', 'PART_PAID', 'OVERDUE']);
 const TAG_FOR: Record<string, string> = { PAID: 'ok', OVERDUE: 'bad', PART_PAID: 'warn', CANCELLED: 'neutral', SUPERSEDED: 'neutral' };
@@ -25,8 +27,6 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
     },
   });
 
-  const [newItemId, setNewItemId] = useState<number | ''>('');
-  const [newQty, setNewQty] = useState(1);
   const [payAmount, setPayAmount] = useState('');
   const [channel, setChannel] = useState('POS');
   const [bankRef, setBankRef] = useState('');
@@ -42,12 +42,17 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
     ]);
   }
 
-  async function addLine() {
-    if (!newItemId) return;
+  async function addLine(line: LineToAdd) {
     try {
       const { error } = await apiClient.POST('/api/v1/bills/{id}/lines', {
         params: { path: { id: String(billId) } },
-        body: { revenue_item_id: newItemId, quantity: String(newQty) },
+        body: {
+          revenue_item_id: line.revenueItemId,
+          quantity: String(line.quantity),
+          rate_band_id: line.rateBandId,
+          rate_tier_id: line.rateTierId,
+          amount_override: line.amountOverride,
+        },
       });
       if (error) throw new Error(errorMessage(error));
       await refresh();
@@ -87,7 +92,6 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
     }
   }
 
-  const groupedItems = revenueItems ? toGroupedItems(revenueItems) : [];
   const canPay = bill != null && PAYABLE_STATUSES.has(bill.status) && (isAdmin || user?.access_level === 'CONSULTANT');
 
   return (
@@ -129,11 +133,13 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
           </KV>
 
           <h3 style={{ margin: '16px 0 8px' }}>Line Items</h3>
-          {bill.lines.map((l) =>
-            isAdmin ? (
+          {bill.lines.map((l) => {
+            const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
+            return isAdmin ? (
               <div className="row" key={l.id} style={{ alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ flex: 2, minWidth: 180 }}>
                   {l.harmonised_code} — {l.item_name}
+                  {bandNote}
                 </div>
                 <div style={{ maxWidth: 130 }} className="num">
                   {money(l.line_amount)}
@@ -143,11 +149,11 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
                 </button>
               </div>
             ) : (
-              <KV key={l.id} label={`${l.harmonised_code} — ${l.item_name}`}>
+              <KV key={l.id} label={`${l.harmonised_code} — ${l.item_name}${bandNote}`}>
                 <span className="num">{money(l.line_amount)}</span>
               </KV>
-            ),
-          )}
+            );
+          })}
           {Number(bill.arrears_amount) > 0 && (
             <KV label="Arrears — brought forward from prior bills">
               <span className="num">{money(bill.arrears_amount)}</span>
@@ -184,16 +190,8 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
           )}
 
           {isAdmin && (
-            <div className="row" style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 14, alignItems: 'center' }}>
-              <Field label="Add revenue item">
-                <GroupedSelect items={groupedItems} groupOrder={REVENUE_CATEGORY_ORDER} value={newItemId} onChange={setNewItemId} />
-              </Field>
-              <Field label="Qty">
-                <Input type="number" min={1} value={newQty} onChange={(e) => setNewQty(Number(e.target.value) || 1)} style={{ maxWidth: 90 }} />
-              </Field>
-              <button className="btn btn-ghost" onClick={addLine} style={{ maxWidth: 110 }}>
-                Add
-              </button>
+            <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+              <RevenueItemLinePicker items={revenueItems ?? []} onAdd={addLine} />
             </div>
           )}
 

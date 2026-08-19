@@ -1,9 +1,10 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { ClickableRow, Field, Input, Modal, NumCell, TableWrap, money, useToast } from '@acrev360/ui';
+import { ClickableRow, Field, Input, Modal, NumCell, Tag, TableWrap, money, useToast } from '@acrev360/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useRevenueItems } from '../../lib/revenueItems';
+import { RateBandsEditor } from './RateBandsEditor';
 
 export function RevenueItemsPage() {
   const { user } = useAuth();
@@ -46,26 +47,35 @@ export function RevenueItemsPage() {
                   <th>Item</th>
                   <th>Category</th>
                   <th className="r">Current Rate</th>
+                  <th>Pricing</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.map((i) =>
-                  isAdmin ? (
+                {data?.map((i) => {
+                  const banded = i.rate_bands.length > 0;
+                  const pricing = banded ? (
+                    <Tag variant="brass">{i.rate_bands.length} band{i.rate_bands.length === 1 ? '' : 's'}</Tag>
+                  ) : (
+                    <Tag variant="neutral">Flat</Tag>
+                  );
+                  return isAdmin ? (
                     <ClickableRow key={i.id} onClick={() => { setRateItemId(i.id); setNewRate(i.current_rate); }}>
                       <NumCell>{i.harmonised_code}</NumCell>
                       <td>{i.item_name}</td>
                       <td>{i.category_name}</td>
-                      <NumCell className="r">{money(i.current_rate)}</NumCell>
+                      <NumCell className="r">{banded ? '—' : money(i.current_rate)}</NumCell>
+                      <td>{pricing}</td>
                     </ClickableRow>
                   ) : (
                     <tr key={i.id}>
                       <NumCell>{i.harmonised_code}</NumCell>
                       <td>{i.item_name}</td>
                       <td>{i.category_name}</td>
-                      <NumCell className="r">{money(i.current_rate)}</NumCell>
+                      <NumCell className="r">{banded ? '—' : money(i.current_rate)}</NumCell>
+                      <td>{pricing}</td>
                     </tr>
-                  ),
-                )}
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -76,24 +86,33 @@ export function RevenueItemsPage() {
         <Modal
           open
           onClose={() => setRateItemId(null)}
-          title={`Change Rate — ${item.item_name}`}
+          title={item.item_name}
           footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setRateItemId(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={changeRate}>
-                Save
-              </button>
-            </>
+            <button className="btn btn-ghost" onClick={() => setRateItemId(null)}>
+              Close
+            </button>
           }
         >
+          <h3 style={{ margin: '0 0 6px' }}>Flat Rate</h3>
           <p style={{ fontSize: 12.5, color: 'var(--ink-60)', marginBottom: 12 }}>
-            Current rate is {money(item.current_rate)}. Changing it closes the current rate-history row and opens a new one — past assessments keep citing the rate they were priced at.
+            {item.rate_bands.length > 0
+              ? 'This item is priced by the bands below — the flat rate has no effect while bands are active.'
+              : `Current rate is ${money(item.current_rate)}. Changing it closes the current rate-history row and opens a new one — past assessments keep citing the rate they were priced at.`}
           </p>
-          <Field label="New rate (₦)">
-            <Input type="number" min={0} step={0.01} value={newRate} onChange={(e) => setNewRate(e.target.value)} />
-          </Field>
+          <div className="row" style={{ alignItems: 'end' }}>
+            <Field label="New rate (₦)">
+              <Input type="number" min={0} step={0.01} value={newRate} onChange={(e) => setNewRate(e.target.value)} />
+            </Field>
+            <button className="btn btn-primary" onClick={changeRate} style={{ maxWidth: 140 }}>
+              Save Flat Rate
+            </button>
+          </div>
+
+          <RateBandsEditor
+            itemId={item.id}
+            existingBands={item.rate_bands}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ['revenue-items'] })}
+          />
         </Modal>
       )}
     </>
