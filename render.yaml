@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: acrev360-portal
+    runtime: static
+    plan: free
+    buildCommand: npm install && npm run build --workspace=apps/portal
+    staticPublishPath: ./apps/portal/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # VITE_API_BASE_URL isn't set here on purpose — packages/api/src/client.ts
+      # already falls back to https://acrev360-backend.onrender.com in a
+      # production build when this is unset. Only add it if the backend's URL
+      # ever changes.
+    # BrowserRouter (apps/portal/src/main.tsx) needs every path to fall back to
+    # index.html, or a hard refresh on e.g. /payers 404s — there's no real file
+    # at that path, only client-side routing resolves it.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
