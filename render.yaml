@@ -11,10 +11,14 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
-      # VITE_API_BASE_URL isn't set here on purpose — packages/api/src/client.ts
-      # already falls back to https://acrev360-backend.onrender.com in a
-      # production build when this is unset. Only add it if the backend's URL
-      # ever changes.
+      # packages/api/src/client.ts's production fallback still hardcodes the
+      # *old*, disconnected backend service's URL (acrev360-backend.onrender.com,
+      # not tracked as a Blueprint in this workspace) — this explicit value is
+      # what actually wins at build time (Vite inlines env vars, so a change
+      # here needs a new deploy, not just a restart). See CHANGELOG.md's
+      # "First live deploy" entry for why there are two backend URLs.
+      - key: VITE_API_BASE_URL
+        value: https://acrev360-backend-wxu8.onrender.com
     # BrowserRouter (apps/portal/src/main.tsx) needs every path to fall back to
     # index.html, or a hard refresh on e.g. /payers 404s — there's no real file
     # at that path, only client-side routing resolves it.
