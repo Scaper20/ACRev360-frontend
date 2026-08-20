@@ -2,7 +2,10 @@ services:
   - type: web
     name: acrev360-portal
     runtime: static
-    plan: free
+    # Static sites have no `plan` field — they're free by default, unlike
+    # runtime: docker services (see the backend's own render.yaml). Setting
+    # one at all makes Render's Blueprint validation reject the file
+    # ("no such plan free for service type web") — confirmed live.
     buildCommand: npm install && npm run build --workspace=apps/portal
     staticPublishPath: ./apps/portal/dist
     envVars:
