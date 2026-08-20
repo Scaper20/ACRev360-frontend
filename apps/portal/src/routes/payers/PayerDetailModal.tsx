@@ -1,12 +1,16 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Field, KV, Modal, Select, money, useToast } from '@acrev360/ui';
+import { Field, KV, Modal, Select, Tag, money, shortDate, useToast } from '@acrev360/ui';
+import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const KYC_STATUSES = ['PENDING', 'VERIFIED', 'FLAGGED'];
+// Matches BillDetailModal/BillListPage's own status-tag mapping — ISSUED
+// falls through to the 'neutral' default, same as there.
+const BILL_TAG_FOR: Record<string, TagVariant> = { PAID: 'ok', OVERDUE: 'bad', PART_PAID: 'warn', CANCELLED: 'neutral', SUPERSEDED: 'neutral' };
 
 export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClose: () => void }) {
   const { user } = useAuth();
@@ -35,6 +39,15 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
     },
   });
 
+  const billsQuery = useQuery({
+    queryKey: ['payers', 'bills', payerId],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { payer: payerId } } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
+
   async function issueHarmonizedBill() {
     try {
       const { data, error } = await apiClient.POST('/api/v1/bills', { body: { payer_id: payerId, bill_all_drafts: true, roll_arrears: rollArrears } });
@@ -43,6 +56,7 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
       setRollArrears(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['payers', 'draft-assessments', payerId] }),
+        queryClient.invalidateQueries({ queryKey: ['payers', 'bills', payerId] }),
         queryClient.invalidateQueries({ queryKey: ['bills'] }),
       ]);
     } catch (e) {
@@ -88,6 +102,7 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
   const p = payerQuery.data;
   const drafts = draftsQuery.data ?? [];
   const draftsTotal = drafts.reduce((sum, a) => sum + Number(a.amount), 0);
+  const bills = billsQuery.data ?? [];
 
   return (
     <Modal
@@ -135,6 +150,29 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
           ) : (
             <KV label="KYC status">{p.kyc_status}</KV>
           )}
+
+          <h3 style={{ margin: '18px 0 8px' }}>Bills ({bills.length})</h3>
+          {billsQuery.isLoading && <div className="empty">Loading…</div>}
+          {!billsQuery.isLoading && bills.length === 0 && <div className="empty">No bills issued to this payer yet</div>}
+          {bills.map((b) => (
+            <KV
+              key={b.id}
+              label={
+                <>
+                  {b.bill_ref} <Tag variant={BILL_TAG_FOR[b.status] ?? 'neutral'}>{b.status}</Tag>
+                </>
+              }
+            >
+              <span className="num">
+                {money(b.total_amount)}
+                {/* A SUPERSEDED/CANCELLED bill's balance is frozen, not collectible —
+                    showing it as "owing" would double-count against whatever bill it
+                    was rolled into. Matches Bill.TERMINAL_STATUSES on the backend. */}
+                {Number(b.balance) > 0 && b.status !== 'SUPERSEDED' && b.status !== 'CANCELLED' ? ` · ${money(b.balance)} owing` : ''} · due{' '}
+                {shortDate(b.due_date)}
+              </span>
+            </KV>
+          ))}
 
           <h3 style={{ margin: '18px 0 8px' }}>Enumerated Revenue Items — not yet billed ({drafts.length})</h3>
           {drafts.length === 0 && (

@@ -126,17 +126,18 @@ export function DemandBillPrint() {
                 </tr>
               );
             })}
-            {arrears > 0 && (
-              <tr>
-                <td>{year}</td>
-                <td className="num">—</td>
-                <td>Arrears — Brought Forward (Prior Bills Consolidated)</td>
-                <td className="num">{money2(arrears)}</td>
-                <td className="num">{money2(0)}</td>
-                <td className="num">{money2(0)}</td>
-                <td className="num">{money2(arrears)}</td>
-              </tr>
-            )}
+            {arrears > 0 &&
+              bill.superseded_bills.map((s) => (
+                <tr key={s.bill_ref}>
+                  <td>{year}</td>
+                  <td className="num">{s.bill_ref}</td>
+                  <td>Arrears — Brought Forward</td>
+                  <td className="num">{money2(s.amount)}</td>
+                  <td className="num">{money2(0)}</td>
+                  <td className="num">{money2(0)}</td>
+                  <td className="num">{money2(s.amount)}</td>
+                </tr>
+              ))}
           </tbody>
           <tfoot>
             <tr>

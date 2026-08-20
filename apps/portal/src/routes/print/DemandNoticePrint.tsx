@@ -104,16 +104,17 @@ export function DemandNoticePrint() {
                 </tr>
               );
             })}
-            {arrears > 0 && (
-              <tr>
-                <td className="sn">{bill.lines.length + 1}</td>
-                <td>Arrears — Brought Forward (Prior Bills Consolidated)</td>
-                <td className="num">—</td>
-                <td className="num">{money2(arrears)}</td>
-                <td className="num">{money2(0)}</td>
-                <td className="num">{money2(arrears)}</td>
-              </tr>
-            )}
+            {arrears > 0 &&
+              bill.superseded_bills.map((s, i) => (
+                <tr key={s.bill_ref}>
+                  <td className="sn">{bill.lines.length + i + 1}</td>
+                  <td>Arrears — Brought Forward from {s.bill_ref}</td>
+                  <td className="num">—</td>
+                  <td className="num">{money2(s.amount)}</td>
+                  <td className="num">{money2(0)}</td>
+                  <td className="num">{money2(s.amount)}</td>
+                </tr>
+              ))}
           </tbody>
           <tfoot>
             <tr>

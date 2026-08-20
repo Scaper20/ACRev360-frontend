@@ -1267,6 +1267,7 @@ export interface components {
             readonly created_at: string;
             readonly consultant_name: string;
             readonly lines: components["schemas"]["BillLineDetail"][];
+            readonly superseded_bills: components["schemas"]["SupersededBill"][];
         };
         BillLineDetail: {
             readonly id: number;
@@ -2115,6 +2116,7 @@ export interface components {
             address: string;
             ward_name: string;
             lines: components["schemas"]["BillLineDetail"][];
+            superseded_bills: components["schemas"]["SupersededBill"][];
         };
         RateBand: {
             readonly id: number;
@@ -2324,6 +2326,24 @@ export interface components {
         };
         SubConsultantStatusRequest: {
             status: components["schemas"]["StatusC83Enum"];
+        };
+        /**
+         * @description One prior bill folded into this one's arrears_amount via roll_arrears —
+         *     see billing.services.issue_bill. `amount` reads the prior bill's own
+         *     `balance` (aliased — a SUPERSEDED bill isn't itself called "amount"
+         *     anything), frozen at whatever it was the moment it was superseded (a
+         *     SUPERSEDED bill can never take a further payment — see post_payment's
+         *     terminal-state check — so its current balance is exactly what got rolled
+         *     in). Takes Bill instances directly (e.g. `bill.supersedes.all()`), not
+         *     hand-built dicts — a dict would need this same "amount" key, and DRF's
+         *     DecimalField-to-string formatting only happens by going through this
+         *     serializer, not by building a response dict by hand (see the git history
+         *     on PublicBillLookupView for the bug that shipped from doing that once).
+         */
+        SupersededBill: {
+            bill_ref: string;
+            /** Format: decimal */
+            amount: string;
         };
         SyncOutcome: {
             client_id: string;

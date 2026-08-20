@@ -181,9 +181,18 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
             );
           })}
           {Number(bill.arrears_amount) > 0 && (
-            <KV label="Arrears — brought forward from prior bills">
-              <span className="num">{money(bill.arrears_amount)}</span>
-            </KV>
+            <>
+              <KV label="Arrears — brought forward from prior bills">
+                <span className="num">{money(bill.arrears_amount)}</span>
+              </KV>
+              {bill.superseded_bills.map((s) => (
+                <KV key={s.bill_ref} label={<span style={{ color: 'var(--ink-40)', fontSize: 12.5 }}>　consolidated from {s.bill_ref}</span>}>
+                  <span className="num" style={{ color: 'var(--ink-40)', fontSize: 12.5 }}>
+                    {money(s.amount)}
+                  </span>
+                </KV>
+              ))}
+            </>
           )}
           <KV label={<b>Total</b>}>
             <span className="num">{money(bill.total_amount)}</span>
