@@ -189,6 +189,19 @@
   align-items: center;
   gap: 10px;
 }
+button.who {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.who:hover {
+  background: var(--surface-2);
+}
 .who .avatar {
   width: 32px;
   height: 32px;

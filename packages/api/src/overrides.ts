@@ -1,5 +1,5 @@
 /**
- * Seven places where the generated OpenAPI schema is provably wrong about
+ * Eight places where the generated OpenAPI schema is provably wrong about
  * what the server actually returns on the wire (verified against the real
  * serializers/views, not just the schema — see the frontend build plan for
  * how each was found). Use these types instead of the generated ones at the
@@ -69,3 +69,15 @@ export type BillLineEntry = components['schemas']['AddLineRequest'];
  * verified live (`[]`, not `{count, next, previous, results}`).
  */
 export type GlobalExceptionList = components['schemas']['GlobalException'][];
+
+/**
+ * 8. PATCH /api/v1/auth/me -> 200 is documented as `UpdateProfile` (the
+ * narrow 3-field write shape: full_name/email/phone) but MeView.update()
+ * deliberately responds with the full `Me` shape instead, so callers get
+ * consultant_name/agent_code/access_level/etc. back without a second round
+ * trip. drf-spectacular resolves this response type from
+ * get_serializer_class() itself — neither a method-level nor a class-level
+ * (extend_schema_view) @extend_schema override corrected it (confirmed via
+ * two full rebuild+regenerate cycles each on the backend).
+ */
+export type UpdateProfileResponse = components['schemas']['Me'];

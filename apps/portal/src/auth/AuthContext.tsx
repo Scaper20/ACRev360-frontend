@@ -9,6 +9,10 @@ interface AuthContextValue {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** For the profile-edit modal: PATCH /auth/me already responds with the
+   * full Me shape (see MeView.update() on the backend), so callers should
+   * pass that response straight through here rather than re-fetching. */
+  setUser: (user: Me) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -60,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear();
         setUser(null);
       },
+      setUser,
     }),
     [user, loading],
   );

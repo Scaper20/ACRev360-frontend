@@ -171,6 +171,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_auth_change_password_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -217,7 +233,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["v1_auth_me_partial_update"];
         trace?: never;
     };
     "/api/v1/auth/refresh": {
@@ -1312,6 +1328,10 @@ export interface components {
          * @enum {string}
          */
         BusinessSizeEnum: "MICRO" | "SMALL" | "MEDIUM" | "LARGE";
+        ChangePasswordRequest: {
+            current_password: string;
+            new_password: string;
+        };
         ChangeRateRequest: {
             /** Format: decimal */
             rate_amount: string;
@@ -2006,6 +2026,18 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["WorklistPayer"][];
         };
+        /**
+         * @description PATCH /auth/me — deliberately a narrow, separate serializer rather than
+         *     reusing MeSerializer for writes too: username/council/role/consultant/
+         *     access_level and the agent_*\/consultant_* denormalized fields all stay
+         *     admin-managed, not self-service. Only what's actually "my profile" is
+         *     writable here.
+         */
+        PatchedUpdateProfileRequest: {
+            full_name?: string;
+            email?: string;
+            phone?: string;
+        };
         Payer: {
             readonly id: number;
             readonly payer_ref: string;
@@ -2395,6 +2427,18 @@ export interface components {
             /** Format: decimal */
             line_amount: string;
         };
+        /**
+         * @description PATCH /auth/me — deliberately a narrow, separate serializer rather than
+         *     reusing MeSerializer for writes too: username/council/role/consultant/
+         *     access_level and the agent_*\/consultant_* denormalized fields all stay
+         *     admin-managed, not self-service. Only what's actually "my profile" is
+         *     writable here.
+         */
+        UpdateProfile: {
+            full_name: string;
+            email?: string;
+            phone?: string;
+        };
         VerifyReceiptResponse: {
             receipt_ref: string;
             /** Format: decimal */
@@ -2762,6 +2806,30 @@ export interface operations {
             };
         };
     };
+    v1_auth_change_password_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ChangePasswordRequest"];
+                "multipart/form-data": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_auth_login_create: {
         parameters: {
             query?: never;
@@ -2826,6 +2894,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    v1_auth_me_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedUpdateProfileRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedUpdateProfileRequest"];
+                "multipart/form-data": components["schemas"]["PatchedUpdateProfileRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateProfile"];
                 };
             };
         };

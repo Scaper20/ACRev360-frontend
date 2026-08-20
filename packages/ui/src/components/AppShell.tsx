@@ -26,6 +26,9 @@ export interface AppShellProps {
   userName: string;
   userRole: string;
   onSignOut: () => void;
+  /** When given, the name/avatar block becomes a button opening account
+   * management (profile edit, change password) — omit to leave it inert. */
+  onProfileClick?: () => void;
   children: ReactNode;
 }
 
@@ -44,6 +47,7 @@ export function AppShell({
   userName,
   userRole,
   onSignOut,
+  onProfileClick,
   children,
 }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -97,13 +101,23 @@ export function AppShell({
             {pageSubtitle != null && <div className="sub">{pageSubtitle}</div>}
           </div>
           <div className="spacer" />
-          <div className="who">
-            <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
-            <div>
-              <b>{userName}</b>
-              <small>{userRole}</small>
+          {onProfileClick != null ? (
+            <button className="who" onClick={onProfileClick} title="Edit profile / change password">
+              <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
+              <div>
+                <b>{userName}</b>
+                <small>{userRole}</small>
+              </div>
+            </button>
+          ) : (
+            <div className="who">
+              <div className="avatar">{userName.slice(0, 2).toUpperCase()}</div>
+              <div>
+                <b>{userName}</b>
+                <small>{userRole}</small>
+              </div>
             </div>
-          </div>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={onSignOut}>
             Sign out
           </button>

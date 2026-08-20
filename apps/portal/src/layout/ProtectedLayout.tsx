@@ -1,8 +1,10 @@
 import type { AccessLevel } from '@acrev360/api';
 import { AppShell } from '@acrev360/ui';
+import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { navSectionsFor } from '../nav';
+import { MyProfileModal } from './MyProfileModal';
 
 const PAGE_META: Record<string, [string, string]> = {
   '/': ['Revenue Dashboard', 'Real-time position across collections, bills and payers'],
@@ -27,34 +29,39 @@ export function ProtectedLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) return null; // RequireAuth already guards this, but keeps TS happy
   const sections = navSectionsFor(user.access_level as AccessLevel);
   const [title, subtitle] = PAGE_META[location.pathname] ?? ['ACRev360', ''];
 
   return (
-    <AppShell
-      logoInitials="AR"
-      productName="ACRev360"
-      tenantLabel={user.council_code || 'Platform'}
-      sections={sections.map((s) => ({
-        label: s.label,
-        items: s.items.map((item) => ({
-          key: item.key,
-          label: item.label,
-          href: item.to,
-          active: location.pathname === item.to,
-          onClick: () => navigate(item.to),
-        })),
-      }))}
-      footer="ACRev360 — Revenue Administration & Collection"
-      pageTitle={title}
-      pageSubtitle={subtitle}
-      userName={user.full_name}
-      userRole={user.role_name}
-      onSignOut={() => void logout()}
-    >
-      <Outlet />
-    </AppShell>
+    <>
+      <AppShell
+        logoInitials="AR"
+        productName="ACRev360"
+        tenantLabel={user.council_code || 'Platform'}
+        sections={sections.map((s) => ({
+          label: s.label,
+          items: s.items.map((item) => ({
+            key: item.key,
+            label: item.label,
+            href: item.to,
+            active: location.pathname === item.to,
+            onClick: () => navigate(item.to),
+          })),
+        }))}
+        footer="ACRev360 — Revenue Administration & Collection"
+        pageTitle={title}
+        pageSubtitle={subtitle}
+        userName={user.full_name}
+        userRole={user.role_name}
+        onSignOut={() => void logout()}
+        onProfileClick={() => setProfileOpen(true)}
+      >
+        <Outlet />
+      </AppShell>
+      {profileOpen && <MyProfileModal onClose={() => setProfileOpen(false)} />}
+    </>
   );
 }
