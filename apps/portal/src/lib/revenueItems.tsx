@@ -1,9 +1,10 @@
-import { apiClient, errorMessage } from '@acrev360/api';
+import type { GroupableRevenueItem } from '@acrev360/api';
+import { apiClient, errorMessage, REVENUE_CATEGORY_ORDER, toGroupedItems as toGroupedItemsData } from '@acrev360/api';
 import type { GroupedItem } from '@acrev360/ui';
 import { money } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 
-export const REVENUE_CATEGORY_ORDER = ['Rates', 'Licences and Permits', 'Fees and Charges', 'Registration and Professional Fees', 'Levies'];
+export { REVENUE_CATEGORY_ORDER };
 
 export function useRevenueItems() {
   return useQuery({
@@ -18,38 +19,27 @@ export function useRevenueItems() {
 }
 
 export interface RevenueItemPickerItem extends GroupedItem {
-  rateAmount: string;
+  isBanded: boolean;
 }
 
-interface GroupableRevenueItem {
-  id: number;
-  category_name: string;
-  harmonised_code: string;
-  item_name: string;
-  current_rate: string;
-  rate_bands?: { id: number }[];
-}
-
-/** A banded item's own current_rate is a stale leftover from before it was
- * banded (replace_rate_bands never touches the plain RateSchedule row) — it
- * no longer reflects what the item actually costs, so showing it here would
- * be actively misleading. Show the band count instead; the picker that
- * consumes this (RevenueItemLinePicker) resolves the real price once a band
- * is chosen. */
+/** Thin JSX wrapper around the shared, pure @acrev360/api helper — money()
+ * formatting and the GroupedItem render shape are portal/UI concerns, so
+ * they stay here rather than in the shared package (which has no UI
+ * dependency). See toGroupedItemsData's docstring for the banded-item
+ * reasoning itself. */
 export function toGroupedItems(items: GroupableRevenueItem[]): RevenueItemPickerItem[] {
-  return items.map((i) => {
-    const bandCount = i.rate_bands?.length ?? 0;
-    const priceLabel = bandCount > 0 ? `${bandCount} band${bandCount === 1 ? '' : 's'}` : money(i.current_rate);
+  return toGroupedItemsData(items).map((i) => {
+    const priceLabel = i.isBanded ? i.priceLabel : money(i.priceLabel);
     return {
       id: i.id,
-      groupLabel: i.category_name,
-      searchText: `${i.harmonised_code} — ${i.item_name} (${priceLabel})`,
+      groupLabel: i.groupLabel,
+      searchText: `${i.searchText} (${priceLabel})`,
       render: (
         <>
-          {i.harmonised_code} — {i.item_name} ({priceLabel})
+          {i.harmonisedCode} — {i.itemName} ({priceLabel})
         </>
       ),
-      rateAmount: i.current_rate,
+      isBanded: i.isBanded,
     };
   });
 }

@@ -44,9 +44,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Recent payments posted by this agent. The full daily-returns rollup
-         *     (`agent_daily_return`, worklist, offline sync) is fieldops — deferred to
-         *     V2_ARCHITECTURE.md §11 phase 4, out of this build pass.
+         * @description Recent payments posted by this agent — backs both the admin/
+         *     consultant detail view and the mobile app's status view. The
+         *     fieldops app (worklist, offline sync) builds on top of this rather
+         *     than duplicating it — see fieldops.services.get_worklist.
          */
         get: operations["v1_agents_activity_retrieve"];
         put?: never;
@@ -615,6 +616,44 @@ export interface paths {
         };
         /** @description For uptime checks, not an API status page. */
         get: operations["v1_health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Batch-replays offline-queued PAYMENT/PAYER records — see
+         *     fieldops.services.replay_sync_record for the idempotency and per-record
+         *     error handling this wraps.
+         */
+        post: operations["v1_mobile_sync_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/worklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The agent's own ward-scoped payer list — see fieldops.services.get_worklist. */
+        get: operations["v1_mobile_worklist_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1477,6 +1516,12 @@ export interface components {
          * @enum {string}
          */
         EnforcementStageEnum: "NONE" | "FIRST_NOTICE" | "FINAL_NOTICE" | "ENFORCEMENT" | "LEGAL" | "CLOSED";
+        /**
+         * @description * `PAYMENT` - Payment
+         *     * `PAYER` - Payer
+         * @enum {string}
+         */
+        EntityTypeEnum: "PAYMENT" | "PAYER";
         EnumeratedAsset: {
             readonly id: number;
             payer: number;
@@ -1612,6 +1657,10 @@ export interface components {
             /** Format: decimal */
             readonly consultant_commission_rate: string;
             readonly consultant_status: string;
+            readonly agent_id: number;
+            readonly agent_code: string;
+            readonly assigned_ward_id: number;
+            readonly assigned_ward_name: string;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -1941,6 +1990,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["WardZone"][];
         };
+        PaginatedWorklistPayerList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["WorklistPayer"][];
+        };
         Payer: {
             readonly id: number;
             readonly payer_ref: string;
@@ -1999,6 +2063,8 @@ export interface components {
             readonly terminal_code: string;
             posted_by?: number | null;
             readonly posted_by_name: string;
+            readonly receipt_ref: string;
+            readonly qr_token: string;
         };
         PostPayment: {
             bill_id: number;
@@ -2259,6 +2325,28 @@ export interface components {
         SubConsultantStatusRequest: {
             status: components["schemas"]["StatusC83Enum"];
         };
+        SyncOutcome: {
+            client_id: string;
+            result_ref: string;
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        SyncRecordInputRequest: {
+            client_id: string;
+            entity_type: components["schemas"]["EntityTypeEnum"];
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        SyncRequestRequest: {
+            records: components["schemas"]["SyncRecordInputRequest"][];
+        };
+        SyncResponse: {
+            accepted: components["schemas"]["SyncOutcome"][];
+            conflicts: components["schemas"]["SyncOutcome"][];
+            rejected: components["schemas"]["SyncOutcome"][];
+        };
         TokenPairResponse: {
             access: string;
             refresh: string;
@@ -2325,6 +2413,19 @@ export interface components {
          * @enum {string}
          */
         WebhookResponseStatusEnum: "posted" | "duplicate" | "accepted_unmatched" | "rejected";
+        WorklistPayer: {
+            readonly id: number;
+            readonly payer_ref: string;
+            readonly payer_type: components["schemas"]["PayerTypeEnum"];
+            readonly full_name: string;
+            readonly phone: string;
+            readonly address: string;
+            readonly ward: number;
+            readonly ward_name: string;
+            /** Format: decimal */
+            readonly outstanding: string;
+            readonly kyc_status: components["schemas"]["KycStatusEnum"];
+        };
         /**
          * @description * `WARD` - Ward
          *     * `ZONE` - Zone
@@ -3338,6 +3439,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    v1_mobile_sync_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SyncRequestRequest"];
+                "multipart/form-data": components["schemas"]["SyncRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncResponse"];
+                };
+            };
+        };
+    };
+    v1_mobile_worklist_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Search by payer name or reference */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorklistPayerList"];
                 };
             };
         };

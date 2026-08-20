@@ -1,6 +1,10 @@
 export { apiClient, API_BASE_URL, errorMessage } from './client';
-export { authStore } from './auth-store';
+export { authStore, configureAuthStorage } from './auth-store';
 export { login, logout, me } from './auth';
 export type { Me, AccessLevel } from './auth';
 export type { paths, components } from './generated/schema';
+import type { components as _components } from './generated/schema';
+export type WorklistPayer = _components['schemas']['WorklistPayer'];
 export * from './overrides';
+export { REVENUE_CATEGORY_ORDER, toGroupedItems } from './revenue-items';
+export type { GroupableRevenueItem, RevenueItemPickerItem } from './revenue-items';

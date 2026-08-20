@@ -2,7 +2,6 @@ import type { Me } from '@acrev360/api';
 import { authStore, login as apiLogin, logout as apiLogout, me as apiMe } from '@acrev360/api';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { queryClient } from '../lib/queryClient';
 
 interface AuthContextValue {
   user: Me | null;
@@ -18,10 +17,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // A refresh token in sessionStorage means there's a session to resume —
-    // access token is in memory only, so it's already gone after a reload;
-    // the auth-store's refresh flow (see client.ts) will re-mint one on the
-    // first API call this makes.
+    // The refresh token lives in localStorage here (see main.tsx's
+    // configureAuthStorage call), not sessionStorage like the portal — an
+    // installed PWA can be backgrounded/killed by the OS well before the
+    // 7-day refresh token itself expires, and that shouldn't sign the agent
+    // out of a session they never actually ended.
     if (!authStore.getRefreshToken()) {
       setLoading(false);
       return;
@@ -41,23 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async login(username, password) {
         const me = await apiLogin(username, password);
         // login() itself is role-agnostic (see packages/api/src/auth.ts) —
-        // this app's own rule that field agents belong in the mobile app,
-        // not here, is enforced at this call site instead.
-        if (me.access_level === 'AGENT') {
+        // this app is for field agents only, the inverse of the portal's
+        // own rule at its own call site.
+        if (me.access_level !== 'AGENT') {
           authStore.clear();
-          throw new Error('Field agent accounts use the mobile app, not this portal — ask your consultant or council admin for the mobile app link.');
+          throw new Error('This app is for field agent accounts only — use the web portal instead.');
         }
-        // Wipes any cached responses from a previous session in this same
-        // tab — otherwise a stale, more-permissive user's cached list data
-        // (e.g. payers) can render for a moment under a new, more-restricted
-        // role before its refetch comes back 403 and gets silently ignored,
-        // since TanStack Query keeps the last-good data on a failed refetch.
-        queryClient.clear();
         setUser(me);
       },
       async logout() {
         await apiLogout();
-        queryClient.clear();
         setUser(null);
       },
     }),

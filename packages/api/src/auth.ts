@@ -4,18 +4,19 @@ import type { components } from './generated/schema';
 
 export type Me = components['schemas']['Me'];
 
+/** Authenticates and returns the resulting identity. Deliberately role-
+ * agnostic — which access_level a given app accepts differs (the portal
+ * rejects AGENT, the field app requires it), so that gate lives in each
+ * app's own AuthContext, not here. Callers that reject the returned role
+ * should call authStore.clear() themselves before surfacing the error, same
+ * as any other post-login validation failure. */
 export async function login(username: string, password: string): Promise<Me> {
   const { data, error } = await apiClient.POST('/api/v1/auth/login', {
     body: { username, password },
   });
   if (error) throw new Error(errorMessage(error));
   authStore.setTokens(data.access, data.refresh);
-  const user = await me();
-  if (user.access_level === 'AGENT') {
-    authStore.clear();
-    throw new Error('Field agent accounts use the mobile app, not this portal — ask your consultant or council admin for the mobile app link.');
-  }
-  return user;
+  return me();
 }
 
 export async function logout(): Promise<void> {
