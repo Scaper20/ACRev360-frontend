@@ -17,16 +17,22 @@ export function SettlementsPage() {
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['settlements', page],
+    queryKey: ['settlements', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/settlements', { params: { query: { page } } });
+      const { data, error } = await apiClient.GET('/api/v1/settlements', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   async function compute() {
     if (!periodEnd) {
@@ -62,14 +68,14 @@ export function SettlementsPage() {
 
   return (
     <>
-      {isAdmin && (
-        <div className="toolbar">
-          <div className="grow" />
+      <div className="toolbar">
+        <input className="grow" autoComplete="off" placeholder="Search by consultant name…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
+        {isAdmin && (
           <Button variant="primary" onClick={() => setComputeOpen(true)}>
             Compute Settlements
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       <div className="card">
         <div className="table-wrap">
           {isLoading ? (
@@ -107,7 +113,7 @@ export function SettlementsPage() {
                 ) : (
                   <tr>
                     <td colSpan={6} className="empty">
-                      No settlements computed yet
+                      {q ? 'No settlements match' : 'No settlements computed yet'}
                     </td>
                   </tr>
                 )}

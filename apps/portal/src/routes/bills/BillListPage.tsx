@@ -16,25 +16,31 @@ const TAG_FOR: Record<string, string> = {
 };
 
 export function BillListPage() {
+  const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [openNew, setOpenNew] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['bills', status, page],
+    queryKey: ['bills', q, status, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { status: status || undefined, page } } });
+      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { q: q || undefined, status: status || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
 
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
+
   return (
     <>
       <div className="toolbar">
+        <input className="grow" autoComplete="off" placeholder="Search by bill reference or payer…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
         <select
-          className="grow"
           style={{ maxWidth: 220 }}
           value={status}
           onChange={(e) => {

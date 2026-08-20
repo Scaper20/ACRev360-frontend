@@ -33,16 +33,22 @@ export function ConsultantsPage() {
   const [managerUsername, setManagerUsername] = useState('');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['consultants', page],
+    queryKey: ['consultants', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: { page } } });
+      const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   const { data: revenueItems } = useRevenueItems();
   const groupedItems = revenueItems ? toGroupedItems(revenueItems) : [];
@@ -142,7 +148,7 @@ export function ConsultantsPage() {
     <>
       {isAdmin && (
         <div className="toolbar">
-          <div className="grow" />
+          <input className="grow" autoComplete="off" placeholder="Search by name or contract reference…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
           <Button variant="primary" onClick={() => setOnboardOpen(true)}>
             Onboard Consultant
           </Button>

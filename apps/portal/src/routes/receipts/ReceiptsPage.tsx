@@ -5,17 +5,23 @@ import { useState } from 'react';
 
 export function ReceiptsPage() {
   const [detail, setDetail] = useState<number | null>(null);
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const toast = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['receipts', page],
+    queryKey: ['receipts', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/receipts', { params: { query: { page } } });
+      const { data, error } = await apiClient.GET('/api/v1/receipts', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   const receipt = data?.results.find((r) => r.id === detail);
 
@@ -35,6 +41,9 @@ export function ReceiptsPage() {
 
   return (
     <>
+      <div className="toolbar">
+        <input className="grow" autoComplete="off" placeholder="Search by receipt ref, bill ref or payer…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
+      </div>
       <div className="card">
         <TableWrap>
           {isLoading ? (
@@ -46,6 +55,7 @@ export function ReceiptsPage() {
               <thead>
                 <tr>
                   <th>Receipt Ref</th>
+                  <th>Payer</th>
                   <th>Bill</th>
                   <th className="r">Amount</th>
                   <th>Issued</th>
@@ -57,6 +67,7 @@ export function ReceiptsPage() {
                   data.results.map((r) => (
                     <ClickableRow key={r.id} onClick={() => setDetail(r.id)}>
                       <NumCell>{r.receipt_ref}</NumCell>
+                      <td>{r.full_name}</td>
                       <NumCell>{r.bill_ref}</NumCell>
                       <NumCell className="r">{money2(r.amount)}</NumCell>
                       <NumCell>{dateTime(r.created_at)}</NumCell>
@@ -65,8 +76,8 @@ export function ReceiptsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="empty">
-                      No receipts issued yet
+                    <td colSpan={6} className="empty">
+                      {q ? 'No receipts match' : 'No receipts issued yet'}
                     </td>
                   </tr>
                 )}
@@ -93,6 +104,7 @@ export function ReceiptsPage() {
             </>
           }
         >
+          <KV label="Payer">{receipt.full_name}</KV>
           <KV label="Bill">
             <span className="num">{receipt.bill_ref}</span>
           </KV>

@@ -18,16 +18,22 @@ export function DebtPage() {
   const [channel, setChannel] = useState('POS');
   const [bankRef, setBankRef] = useState('');
   const [payError, setPayError] = useState<string | null>(null);
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['debt', page],
+    queryKey: ['debt', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/debt', { params: { query: { page } } });
+      const { data, error } = await apiClient.GET('/api/v1/debt', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   async function refreshAgeing() {
     try {
@@ -84,12 +90,10 @@ export function DebtPage() {
 
   return (
     <>
-      {isAdmin && (
-        <div className="toolbar">
-          <div className="grow" />
-          <Button onClick={refreshAgeing}>Refresh Ageing</Button>
-        </div>
-      )}
+      <div className="toolbar">
+        <input className="grow" autoComplete="off" placeholder="Search by bill reference or payer…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
+        {isAdmin && <Button onClick={refreshAgeing}>Refresh Ageing</Button>}
+      </div>
       <div className="card">
         <div className="table-wrap">
           {isLoading ? (
@@ -125,7 +129,7 @@ export function DebtPage() {
                 ) : (
                   <tr>
                     <td colSpan={6} className="empty">
-                      No open debt cases
+                      {q ? 'No debt cases match' : 'No open debt cases'}
                     </td>
                   </tr>
                 )}

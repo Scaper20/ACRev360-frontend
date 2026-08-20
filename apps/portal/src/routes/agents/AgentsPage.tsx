@@ -24,15 +24,21 @@ export function AgentsPage() {
   const [ward, setWard] = useState<number | ''>('');
   const [page, setPage] = useState(1);
   const [addItemId, setAddItemId] = useState<number | ''>('');
+  const [q, setQ] = useState('');
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['agents', page],
+    queryKey: ['agents', q, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/agents', { params: { query: { page } } });
+      const { data, error } = await apiClient.GET('/api/v1/agents', { params: { query: { q: q || undefined, page } } });
       if (error) throw new Error(errorMessage(error));
       return data;
     },
   });
+
+  function onSearchChange(value: string) {
+    setQ(value);
+    setPage(1);
+  }
 
   const { data: consultants } = useQuery({
     queryKey: ['consultants'],
@@ -137,7 +143,7 @@ export function AgentsPage() {
   return (
     <>
       <div className="toolbar">
-        <div className="grow" />
+        <input className="grow" autoComplete="off" placeholder="Search by agent code or name…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
         <Button variant="primary" onClick={() => setOnboardOpen(true)}>
           Onboard Agent
         </Button>
@@ -153,6 +159,7 @@ export function AgentsPage() {
               <thead>
                 <tr>
                   <th>Agent Code</th>
+                  <th>Name</th>
                   <th>Ward</th>
                   <th>Consultant</th>
                   <th>Device IMEI</th>
@@ -164,6 +171,7 @@ export function AgentsPage() {
                   data.results.map((a) => (
                     <ClickableRow key={a.id} onClick={() => setDetailId(a.id)}>
                       <NumCell>{a.agent_code}</NumCell>
+                      <td>{a.agent_full_name || '—'}</td>
                       <td>{a.assigned_ward != null ? wardName(a.assigned_ward) : '—'}</td>
                       <td>{consultantName(a.consultant_id)}</td>
                       <NumCell>{a.device_imei || '—'}</NumCell>
@@ -174,8 +182,8 @@ export function AgentsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="empty">
-                      No field agents onboarded yet
+                    <td colSpan={6} className="empty">
+                      No field agents match
                     </td>
                   </tr>
                 )}
@@ -228,7 +236,7 @@ export function AgentsPage() {
         <Modal
           open
           onClose={() => setDetailId(null)}
-          title={`Agent — ${agent.agent_code}`}
+          title={agent.agent_full_name ? `${agent.agent_full_name} — ${agent.agent_code}` : `Agent — ${agent.agent_code}`}
           footer={
             <button className="btn btn-ghost" onClick={() => setDetailId(null)}>
               Close

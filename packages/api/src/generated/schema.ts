@@ -1505,6 +1505,8 @@ export interface components {
             device_imei?: string;
             readonly status: components["schemas"]["FieldAgentStatusEnum"];
             readonly consultant_id: number;
+            readonly agent_full_name: string;
+            readonly agent_phone: string;
         };
         FieldAgentRequest: {
             assigned_ward?: number | null;
@@ -2112,6 +2114,7 @@ export interface components {
             readonly receipt_ref: string;
             readonly payment: number;
             readonly bill_ref: string;
+            readonly full_name: string;
             /** Format: decimal */
             readonly amount: string;
             /** Format: uuid */
@@ -2343,6 +2346,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by agent code or agent name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -2617,6 +2622,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by actor username, action or entity type */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -3027,6 +3034,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by consultant name or contract reference */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -3255,6 +3264,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by bill reference or payer name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -3589,6 +3600,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by receipt ref, bill ref or payer name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -3849,6 +3862,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Search by consultant name */
+                q?: string;
             };
             header?: never;
             path?: never;
