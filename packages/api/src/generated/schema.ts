@@ -927,6 +927,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stakeholders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only oversight accounts (GLOBAL_VIEW access level) — council/FCT
+         *     stakeholders who need a performance pulse but must never see individual
+         *     payer or sub-consultant identities. That boundary is enforced elsewhere
+         *     (GLOBAL_VIEW is deliberately absent from PayerViewSet, BillViewSet,
+         *     PaymentViewSet, ReceiptViewSet and SubConsultantViewSet's permissions,
+         *     and DashboardGlobalView anonymizes its per-consultant breakdown for this
+         *     role) — this viewset only manages the accounts themselves, and that
+         *     management is COUNCIL_ADMIN-only both ways.
+         */
+        get: operations["v1_stakeholders_list"];
+        put?: never;
+        /**
+         * @description Read-only oversight accounts (GLOBAL_VIEW access level) — council/FCT
+         *     stakeholders who need a performance pulse but must never see individual
+         *     payer or sub-consultant identities. That boundary is enforced elsewhere
+         *     (GLOBAL_VIEW is deliberately absent from PayerViewSet, BillViewSet,
+         *     PaymentViewSet, ReceiptViewSet and SubConsultantViewSet's permissions,
+         *     and DashboardGlobalView anonymizes its per-consultant breakdown for this
+         *     role) — this viewset only manages the accounts themselves, and that
+         *     management is COUNCIL_ADMIN-only both ways.
+         */
+        post: operations["v1_stakeholders_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stakeholders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only oversight accounts (GLOBAL_VIEW access level) — council/FCT
+         *     stakeholders who need a performance pulse but must never see individual
+         *     payer or sub-consultant identities. That boundary is enforced elsewhere
+         *     (GLOBAL_VIEW is deliberately absent from PayerViewSet, BillViewSet,
+         *     PaymentViewSet, ReceiptViewSet and SubConsultantViewSet's permissions,
+         *     and DashboardGlobalView anonymizes its per-consultant breakdown for this
+         *     role) — this viewset only manages the accounts themselves, and that
+         *     management is COUNCIL_ADMIN-only both ways.
+         */
+        get: operations["v1_stakeholders_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/terminals": {
         parameters: {
             query?: never;
@@ -1483,6 +1545,10 @@ export interface components {
             readonly role_name: string;
             readonly consultant: number | null;
             readonly access_level: string;
+            readonly consultant_name: string;
+            /** Format: decimal */
+            readonly consultant_commission_rate: string;
+            readonly consultant_status: string;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -1767,6 +1833,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RevenueItemTemplate"][];
         };
+        PaginatedStakeholderList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Stakeholder"][];
+        };
         PaginatedSubConsultantList: {
             /** @example 123 */
             count: number;
@@ -2044,6 +2125,21 @@ export interface components {
         SettlementStatusRequest: {
             status: components["schemas"]["Status5d5Enum"];
         };
+        Stakeholder: {
+            readonly id: number;
+            username: string;
+            full_name: string;
+            phone?: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly date_joined: string;
+        };
+        StakeholderRequest: {
+            username: string;
+            full_name: string;
+            phone?: string;
+            password?: string;
+        };
         /**
          * @description * `COMPUTED` - Computed
          *     * `APPROVED` - Approved
@@ -2082,6 +2178,7 @@ export interface components {
             readonly status: components["schemas"]["StatusC83Enum"];
             /** Format: date-time */
             readonly created_at: string;
+            readonly has_login: string;
         };
         SubConsultantRequest: {
             consultant_name: string;
@@ -2091,6 +2188,9 @@ export interface components {
              * @description Percent, e.g. 30.00
              */
             commission_rate: string;
+            manager_username?: string;
+            manager_password?: string;
+            manager_full_name?: string;
         };
         SubConsultantStatusRequest: {
             status: components["schemas"]["StatusC83Enum"];
@@ -3686,6 +3786,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedCommissionSettlementList"];
+                };
+            };
+        };
+    };
+    v1_stakeholders_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStakeholderList"];
+                };
+            };
+        };
+    };
+    v1_stakeholders_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StakeholderRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StakeholderRequest"];
+                "multipart/form-data": components["schemas"]["StakeholderRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stakeholder"];
+                };
+            };
+        };
+    };
+    v1_stakeholders_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stakeholder"];
                 };
             };
         };

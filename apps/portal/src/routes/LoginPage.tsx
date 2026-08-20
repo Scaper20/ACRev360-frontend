@@ -3,6 +3,15 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 
+// Matches `seed_demo_data`'s "Sign-in accounts" printout — kept in sync by
+// hand since there's no endpoint that lists what demo accounts exist.
+const DEMO_PASSWORD = 'acrev360-2026';
+const DEMO_ACCOUNTS = [
+  { username: 'admin', label: 'Council Revenue Administrator — full access' },
+  { username: 'consultant1', label: 'Sub-consultant manager — own portfolio only' },
+  { username: 'stakeholder', label: 'Council stakeholder — read-only, general figures only' },
+];
+
 export function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -24,17 +33,31 @@ export function LoginPage() {
 
   if (user) return null;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function attemptLogin(u: string, p: string) {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username, password);
+      await login(u, p);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void attemptLogin(username, password);
+  }
+
+  // Demo credentials seeded by `seed_demo_data` — see DEMO_ACCOUNTS below.
+  // Fills the visible fields (so it's obvious what's signing in, not just a
+  // silent teleport past the form) and submits with the explicit values
+  // rather than the just-set state, which wouldn't be readable yet.
+  function quickLogin(u: string) {
+    setUsername(u);
+    setPassword(DEMO_PASSWORD);
+    void attemptLogin(u, DEMO_PASSWORD);
   }
 
   return (
@@ -74,6 +97,16 @@ export function LoginPage() {
               {submitting ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
+
+          <div className="demo-accounts">
+            <h4>Demonstration accounts</h4>
+            {DEMO_ACCOUNTS.map((acct) => (
+              <button key={acct.username} type="button" disabled={submitting} onClick={() => quickLogin(acct.username)}>
+                <b>{acct.username}</b>
+                <small>{acct.label}</small>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

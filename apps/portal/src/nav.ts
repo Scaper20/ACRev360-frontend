@@ -52,6 +52,7 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
             { key: 'revenueItems', label: 'Revenue Items', to: '/revenue-items' },
             { key: 'consultants', label: 'Sub-Consultants', to: '/consultants' },
             { key: 'agents', label: 'Field Agents', to: '/agents' },
+            { key: 'stakeholders', label: 'Stakeholders', to: '/stakeholders' },
             { key: 'terminals', label: 'POS Terminal Fleet', to: '/terminals' },
             { key: 'channels', label: 'e-Channel Config', to: '/channels' },
             { key: 'audit', label: 'Audit Log', to: '/audit' },
@@ -81,10 +82,10 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
         { label: 'Team', items: [{ key: 'agents', label: 'Field Agents', to: '/agents' }, { key: 'terminals', label: 'POS Terminal Fleet', to: '/terminals' }] },
       ];
     case 'GLOBAL_VIEW':
-      return [
-        { label: 'Overview', items: [{ key: 'dashboard', label: 'Dashboard', to: '/' }, { key: 'global', label: 'Global Performance', to: '/global' }] },
-        { label: 'Administration', items: [{ key: 'consultants', label: 'Sub-Consultants', to: '/consultants' }] },
-      ];
+      // Read-only, aggregate-only by design (see StakeholderViewSet's
+      // docstring on the backend) — no Sub-Consultants link, since that list
+      // is named-identity data GLOBAL_VIEW no longer has permission for.
+      return [{ label: 'Overview', items: [{ key: 'dashboard', label: 'Dashboard', to: '/' }, { key: 'global', label: 'Global Performance', to: '/global' }] }];
     case 'AGENT':
       // Field agents have no portal surface this pass — the backend has no
       // worklist/offline-sync endpoints yet (see build plan). Route guarding

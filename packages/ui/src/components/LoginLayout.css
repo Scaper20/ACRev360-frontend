@@ -58,3 +58,40 @@
   margin-bottom: 6px;
   font-weight: 600;
 }
+.demo-accounts {
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.demo-accounts h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-40);
+  margin-bottom: 10px;
+}
+.demo-accounts button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  font: inherit;
+  transition: 0.15s;
+}
+.demo-accounts button:hover {
+  border-color: var(--green-600);
+  background: var(--green-100);
+}
+.demo-accounts button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.demo-accounts small {
+  color: var(--ink-40);
+  display: block;
+}

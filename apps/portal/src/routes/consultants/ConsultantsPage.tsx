@@ -29,6 +29,8 @@ export function ConsultantsPage() {
   const [name, setName] = useState('');
   const [contractRef, setContractRef] = useState('');
   const [rate, setRate] = useState('30');
+  const [managerName, setManagerName] = useState('');
+  const [managerUsername, setManagerUsername] = useState('');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
   const [page, setPage] = useState(1);
@@ -94,13 +96,26 @@ export function ConsultantsPage() {
       toast('Enter a name and contract reference', true);
       return;
     }
+    if (managerUsername.trim() && !managerName.trim()) {
+      toast("Enter the manager's name, or leave both manager fields blank", true);
+      return;
+    }
     try {
-      const { error } = await apiClient.POST('/api/v1/consultants', { body: { consultant_name: name.trim(), contract_ref: contractRef.trim(), commission_rate: rate } });
+      const { error } = await apiClient.POST('/api/v1/consultants', {
+        body: {
+          consultant_name: name.trim(),
+          contract_ref: contractRef.trim(),
+          commission_rate: rate,
+          ...(managerUsername.trim() ? { manager_username: managerUsername.trim(), manager_full_name: managerName.trim() } : {}),
+        },
+      });
       if (error) throw new Error(errorMessage(error));
-      toast('Consultant onboarded');
+      toast(managerUsername.trim() ? 'Consultant onboarded with a manager login' : 'Consultant onboarded');
       setOnboardOpen(false);
       setName('');
       setContractRef('');
+      setManagerName('');
+      setManagerUsername('');
       await queryClient.invalidateQueries({ queryKey: ['consultants'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not onboard consultant', true);
@@ -200,6 +215,14 @@ export function ConsultantsPage() {
           <Field label="Commission rate (%)">
             <Input type="number" min={0} max={100} step={0.01} value={rate} onChange={(e) => setRate(e.target.value)} />
           </Field>
+          <Field label="Manager login — username (optional)">
+            <Input value={managerUsername} onChange={(e) => setManagerUsername(e.target.value)} placeholder="Leave blank to onboard without a login" />
+          </Field>
+          {managerUsername.trim() && (
+            <Field label="Manager's name">
+              <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} />
+            </Field>
+          )}
         </Modal>
       )}
 
@@ -216,6 +239,9 @@ export function ConsultantsPage() {
           <KV label="Commission rate">{consultant.commission_rate}%</KV>
           <KV label="Status">
             <Tag variant={STATUS_TAG[consultant.status] ?? 'neutral'}>{consultant.status}</Tag>
+          </KV>
+          <KV label="Manager login">
+            <Tag variant={consultant.has_login ? 'ok' : 'neutral'}>{consultant.has_login ? 'Set up' : 'Not set up'}</Tag>
           </KV>
           {isAdmin && (
             <Field label="Change status">

@@ -10,7 +10,12 @@ export async function login(username: string, password: string): Promise<Me> {
   });
   if (error) throw new Error(errorMessage(error));
   authStore.setTokens(data.access, data.refresh);
-  return me();
+  const user = await me();
+  if (user.access_level === 'AGENT') {
+    authStore.clear();
+    throw new Error('Field agent accounts use the mobile app, not this portal — ask your consultant or council admin for the mobile app link.');
+  }
+  return user;
 }
 
 export async function logout(): Promise<void> {

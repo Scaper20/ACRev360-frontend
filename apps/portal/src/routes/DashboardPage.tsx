@@ -1,6 +1,10 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { BarList, Card, FlowChart, KV, Notice, StatCard, TrendChart, money } from '@acrev360/ui';
+import type { TagVariant } from '@acrev360/ui';
+import { BarList, Card, FlowChart, KV, Notice, StatCard, Tag, TrendChart, money } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../auth/AuthContext';
+
+const CONSULTANT_STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral', PENDING: 'warn' };
 
 // Reconciled against the real design tokens (packages/ui/src/tokens.css) —
 // POS/OTC/IB_MB already matched --green-700/--brass/--teal exactly; USSD and
@@ -16,6 +20,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 };
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const { data, error, isLoading } = useQuery({
     queryKey: ['dashboard', 'summary'],
     queryFn: async () => {
@@ -31,6 +36,21 @@ export function DashboardPage() {
 
   return (
     <>
+      {user?.access_level === 'CONSULTANT' && user.consultant_name != null && (
+        <Card style={{ marginBottom: 16 }}>
+          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>{user.consultant_name}</h3>
+              <div style={{ color: 'var(--ink-60)', fontSize: 13, marginTop: 2 }}>
+                {user.consultant_commission_rate}% commission — the figures below are your own portfolio only
+              </div>
+            </div>
+            {user.consultant_status != null && (
+              <Tag variant={CONSULTANT_STATUS_TAG[user.consultant_status] ?? 'neutral'}>{user.consultant_status}</Tag>
+            )}
+          </div>
+        </Card>
+      )}
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <StatCard label="Total Billed" value={money(data.billed)} delta={`${data.bills} bills issued`} />
         <StatCard

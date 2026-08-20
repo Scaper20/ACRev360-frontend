@@ -14,6 +14,7 @@ import { DebtPage } from './routes/debt/DebtPage';
 import { RevenueItemsPage } from './routes/revenue-items/RevenueItemsPage';
 import { ConsultantsPage } from './routes/consultants/ConsultantsPage';
 import { AgentsPage } from './routes/agents/AgentsPage';
+import { StakeholdersPage } from './routes/stakeholders/StakeholdersPage';
 import { TerminalsPage } from './routes/terminals/TerminalsPage';
 import { ChannelsPage } from './routes/channels/ChannelsPage';
 import { AuditPage } from './routes/audit/AuditPage';
@@ -46,6 +47,7 @@ export function App() {
           <Route path="/revenue-items" element={<RevenueItemsPage />} />
           <Route path="/consultants" element={<ConsultantsPage />} />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/stakeholders" element={<StakeholdersPage />} />
           <Route path="/terminals" element={<TerminalsPage />} />
           <Route path="/channels" element={<ChannelsPage />} />
           <Route path="/audit" element={<AuditPage />} />

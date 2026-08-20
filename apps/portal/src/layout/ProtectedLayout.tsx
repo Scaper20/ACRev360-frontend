@@ -17,6 +17,7 @@ const PAGE_META: Record<string, [string, string]> = {
   '/revenue-items': ['Revenue Items', 'The harmonised chart of revenue and its rates'],
   '/consultants': ['Sub-Consultants', 'Portfolio holders onboarded to the platform'],
   '/agents': ['Field Agents', 'Collection agents deployed to wards'],
+  '/stakeholders': ['Stakeholders', 'Read-only oversight accounts'],
   '/terminals': ['POS Terminal Fleet', 'Deployed terminals and lifetime collections'],
   '/channels': ['e-Channel Config', 'Payment channel catalogue and API credentials'],
   '/audit': ['Audit Log', 'Immutable trail of sensitive actions'],

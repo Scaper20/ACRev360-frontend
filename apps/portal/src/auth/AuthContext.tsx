@@ -2,6 +2,7 @@ import type { Me } from '@acrev360/api';
 import { authStore, login as apiLogin, logout as apiLogout, me as apiMe } from '@acrev360/api';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { queryClient } from '../lib/queryClient';
 
 interface AuthContextValue {
   user: Me | null;
@@ -39,10 +40,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       async login(username, password) {
         const me = await apiLogin(username, password);
+        // Wipes any cached responses from a previous session in this same
+        // tab — otherwise a stale, more-permissive user's cached list data
+        // (e.g. payers) can render for a moment under a new, more-restricted
+        // role before its refetch comes back 403 and gets silently ignored,
+        // since TanStack Query keeps the last-good data on a failed refetch.
+        queryClient.clear();
         setUser(me);
       },
       async logout() {
         await apiLogout();
+        queryClient.clear();
         setUser(null);
       },
     }),
