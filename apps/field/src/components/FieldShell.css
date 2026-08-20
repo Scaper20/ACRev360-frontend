@@ -25,6 +25,22 @@
   min-width: 0;
 }
 
+button.field-header-who {
+  border: none;
+  background: none;
+  padding: 4px;
+  margin: -4px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.field-header-who:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .field-header-who b {
   display: block;
   font-size: 14px;

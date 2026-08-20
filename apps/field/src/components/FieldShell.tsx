@@ -18,6 +18,7 @@ export function FieldShell({
   activeView,
   onNavigate,
   onSignOut,
+  onProfileClick,
   children,
 }: {
   agentName: string;
@@ -27,18 +28,31 @@ export function FieldShell({
   activeView: FieldView;
   onNavigate: (view: FieldView) => void;
   onSignOut: () => void;
+  /** When given, the avatar/name block becomes a button opening account
+   * management (profile edit, change password) — omit to leave it inert. */
+  onProfileClick?: () => void;
   children: ReactNode;
 }) {
+  const who = (
+    <>
+      <div className="field-avatar">{agentName.slice(0, 2).toUpperCase()}</div>
+      <div>
+        <b>{agentName}</b>
+        <small>{wardName ?? 'No ward assigned'}</small>
+      </div>
+    </>
+  );
+
   return (
     <div className="field-shell">
       <header className="field-header">
-        <div className="field-header-who">
-          <div className="field-avatar">{agentName.slice(0, 2).toUpperCase()}</div>
-          <div>
-            <b>{agentName}</b>
-            <small>{wardName ?? 'No ward assigned'}</small>
-          </div>
-        </div>
+        {onProfileClick ? (
+          <button className="field-header-who" onClick={onProfileClick} title="Edit profile / change password">
+            {who}
+          </button>
+        ) : (
+          <div className="field-header-who">{who}</div>
+        )}
         <div className={`field-online-badge ${isOnline ? 'on' : 'off'}`}>{isOnline ? 'Online' : 'Offline'}</div>
         <button className="btn btn-ghost btn-sm" onClick={onSignOut}>
           Sign out

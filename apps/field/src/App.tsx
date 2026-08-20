@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './auth/AuthContext';
 import { FieldShell } from './components/FieldShell';
 import type { FieldView } from './components/FieldShell';
+import { MyProfileModal } from './components/MyProfileModal';
 import { LoginScreen } from './views/LoginScreen';
 import { CollectView } from './views/CollectView';
 import type { ReceiptResult } from './views/ReceiptView';
@@ -50,6 +51,7 @@ function AuthenticatedApp({
   const [receipt, setReceipt] = useState<ReceiptResult | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queueCount, setQueueCount] = useState(loadQueue().length);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     function goOnline() {
@@ -95,26 +97,30 @@ function AuthenticatedApp({
   }
 
   return (
-    <FieldShell
-      agentName={agentName}
-      wardName={wardName}
-      isOnline={isOnline}
-      queueCount={queueCount}
-      activeView={view}
-      onNavigate={handleNavigate}
-      onSignOut={onLogout}
-    >
-      {receipt ? (
-        <ReceiptView receipt={receipt} onDone={handleReceiptDone} />
-      ) : view === 'worklist' ? (
-        <WorklistView onSelectPayer={handleSelectPayer} />
-      ) : view === 'collect' ? (
-        <CollectView payer={selectedPayer} isOnline={isOnline} onBack={() => setView('worklist')} onReceipt={handleReceipt} />
-      ) : view === 'register' ? (
-        <RegisterView wardId={wardId} isOnline={isOnline} onReceipt={handleReceipt} />
-      ) : (
-        <StatusView agentId={agentId} agentName={agentName} wardName={wardName} isOnline={isOnline} />
-      )}
-    </FieldShell>
+    <>
+      <FieldShell
+        agentName={agentName}
+        wardName={wardName}
+        isOnline={isOnline}
+        queueCount={queueCount}
+        activeView={view}
+        onNavigate={handleNavigate}
+        onSignOut={onLogout}
+        onProfileClick={() => setProfileOpen(true)}
+      >
+        {receipt ? (
+          <ReceiptView receipt={receipt} onDone={handleReceiptDone} />
+        ) : view === 'worklist' ? (
+          <WorklistView onSelectPayer={handleSelectPayer} />
+        ) : view === 'collect' ? (
+          <CollectView payer={selectedPayer} isOnline={isOnline} onBack={() => setView('worklist')} onReceipt={handleReceipt} />
+        ) : view === 'register' ? (
+          <RegisterView wardId={wardId} isOnline={isOnline} onReceipt={handleReceipt} />
+        ) : (
+          <StatusView agentId={agentId} agentName={agentName} wardName={wardName} isOnline={isOnline} />
+        )}
+      </FieldShell>
+      {profileOpen && <MyProfileModal onClose={() => setProfileOpen(false)} />}
+    </>
   );
 }
