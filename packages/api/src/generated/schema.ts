@@ -57,6 +57,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{id}/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Which revenue items this specific agent may handle — an optional
+         *     further narrowing of their own consultant's ConsultantPortfolio (see
+         *     AgentPortfolio's docstring). get_queryset() already scopes a
+         *     CONSULTANT caller to their own agents, so no extra ownership check is
+         *     needed here beyond get_object() itself — a consultant reaching this
+         *     for another firm's agent 404s before this method body ever runs.
+         */
+        get: operations["v1_agents_portfolio_list"];
+        put?: never;
+        /**
+         * @description Which revenue items this specific agent may handle — an optional
+         *     further narrowing of their own consultant's ConsultantPortfolio (see
+         *     AgentPortfolio's docstring). get_queryset() already scopes a
+         *     CONSULTANT caller to their own agents, so no extra ownership check is
+         *     needed here beyond get_object() itself — a consultant reaching this
+         *     for another firm's agent 404s before this method body ever runs.
+         */
+        post: operations["v1_agents_portfolio_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}/portfolio/{portfolio_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_agents_portfolio_end_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/api-clients": {
         parameters: {
             query?: never;
@@ -1093,6 +1141,20 @@ export interface components {
             today_total: string;
             recent_payments: components["schemas"]["Payment"][];
         };
+        AgentPortfolio: {
+            readonly id: number;
+            readonly agent: number;
+            council_revenue_item: number;
+            ward?: number | null;
+            /** Format: date */
+            readonly effective_from: string;
+            /** Format: date */
+            readonly effective_to: string | null;
+        };
+        AgentPortfolioRequest: {
+            council_revenue_item: number;
+            ward?: number | null;
+        };
         /**
          * @description Carries `council_id` on the access token itself so apps.tenancy.middleware can
          *     set the RLS context by decoding the token alone — no DB query needed before the
@@ -1282,7 +1344,7 @@ export interface components {
         };
         ConsultantPortfolio: {
             readonly id: number;
-            consultant: number;
+            readonly consultant: number;
             council_revenue_item: number;
             ward?: number | null;
             /** Format: date */
@@ -1291,7 +1353,6 @@ export interface components {
             readonly effective_to: string | null;
         };
         ConsultantPortfolioRequest: {
-            consultant: number;
             council_revenue_item: number;
             ward?: number | null;
         };
@@ -2362,6 +2423,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentActivityResponse"];
+                };
+            };
+        };
+    };
+    v1_agents_portfolio_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPortfolio"][];
+                };
+            };
+        };
+    };
+    v1_agents_portfolio_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPortfolioRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AgentPortfolioRequest"];
+                "multipart/form-data": components["schemas"]["AgentPortfolioRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPortfolio"];
+                };
+            };
+        };
+    };
+    v1_agents_portfolio_end_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPortfolio"];
                 };
             };
         };
