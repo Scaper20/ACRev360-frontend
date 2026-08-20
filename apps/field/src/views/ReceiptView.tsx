@@ -9,6 +9,11 @@ export interface ReceiptResult {
   receiptRef?: string;
   qrToken?: string;
   time: string;
+  /** The primary action (payment/payer) already succeeded by the time this
+   * is set — it flags a secondary, non-blocking failure (e.g. the GPS
+   * follow-up call) that the agent should still know about rather than have
+   * silently vanish. */
+  warning?: string;
 }
 
 export function ReceiptView({ receipt, onDone }: { receipt: ReceiptResult; onDone: () => void }) {
@@ -46,6 +51,12 @@ export function ReceiptView({ receipt, onDone }: { receipt: ReceiptResult; onDon
           ? 'The payer keeps this reference. The official receipt is issued once this device reconnects and syncs.'
           : 'Scanning the code, or checking the receipt reference on the portal, confirms this receipt is genuine.'}
       </p>
+
+      {receipt.warning != null && (
+        <div className="notice notice-bad" style={{ marginTop: 10, fontSize: 12, textAlign: 'left' }}>
+          {receipt.warning}
+        </div>
+      )}
 
       <Button variant="primary" style={{ width: '100%', marginTop: 16 }} onClick={onDone}>
         Done

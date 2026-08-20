@@ -32,6 +32,7 @@ export function RegisterView({
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [items, setItems] = useState<GroupableRevenueItem[]>([]);
+  const [itemsUnavailable, setItemsUnavailable] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,10 @@ export function RegisterView({
     apiClient
       .GET('/api/v1/revenue-items', { params: { query: {} } })
       .then(({ data, error: apiError }) => {
-        if (apiError) return;
+        if (apiError) {
+          setItemsUnavailable(true);
+          return;
+        }
         setItems(data.results.filter((i) => i.is_active));
       })
       .catch(() => {
@@ -48,6 +52,10 @@ export function RegisterView({
         // meaningful while online enough to have fetched it at least once
         // this session; registering with zero items liable is still valid
         // (a payer can be enumerated before any specific charge is known).
+        // Audit finding: this used to fail silently, leaving an empty
+        // checklist with no explanation — now flagged so the agent knows
+        // *why* it's empty instead of assuming the payer just owes nothing.
+        setItemsUnavailable(true);
       });
   }, []);
 
@@ -126,10 +134,17 @@ export function RegisterView({
       if (!isOnline) throw new Error('offline');
       const { data, error: apiError } = await apiClient.POST('/api/v1/payers', { body: payerFields });
       if (apiError) throw new Error(errorMessage(apiError));
+      // The payer is already created at this point — a failure here is
+      // secondary and must not be treated as the whole registration having
+      // failed (that would wrongly queue a duplicate-creation retry). Audit
+      // finding: this call's result used to go unchecked entirely, so a
+      // failed GPS attachment looked identical to a successful one.
+      let warning: string | undefined;
       if (gps) {
-        await apiClient.POST('/api/v1/assets', {
+        const assetResult = await apiClient.POST('/api/v1/assets', {
           body: { payer: data.id, asset_type: 'PREMISES', ward: wardId, geo_lat: String(gps.lat), geo_lng: String(gps.lng) },
         });
+        if (assetResult.error) warning = 'Payer registered, but the GPS location could not be saved — you can skip GPS or try again later.';
       }
       reset();
       onReceipt({
@@ -139,6 +154,7 @@ export function RegisterView({
         channel: 'Registration',
         receiptRef: data.payer_ref,
         time: data.created_at,
+        warning,
       });
     } catch (err) {
       const isRealRejection = err instanceof Error && err.message !== 'offline' && !(err instanceof TypeError);
@@ -208,7 +224,11 @@ export function RegisterView({
       <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-60)', display: 'block', marginBottom: 5 }}>
         Revenue items liable {bandedCount > 0 && <span style={{ fontWeight: 400 }}>({bandedCount} banded item{bandedCount === 1 ? '' : 's'} not shown — add via a bill instead)</span>}
       </label>
-      <GroupedChecklist items={pickerItems} groupOrder={REVENUE_CATEGORY_ORDER} selected={selectedItemIds} onToggle={toggleItem} />
+      {itemsUnavailable ? (
+        <Notice variant="info">Revenue items couldn't be loaded — you're likely offline. You can still register this payer; add what they're liable for once back online.</Notice>
+      ) : (
+        <GroupedChecklist items={pickerItems} groupOrder={REVENUE_CATEGORY_ORDER} selected={selectedItemIds} onToggle={toggleItem} />
+      )}
 
       {error != null && (
         <div className="notice notice-bad" style={{ margin: '12px 0', fontSize: 12 }}>
