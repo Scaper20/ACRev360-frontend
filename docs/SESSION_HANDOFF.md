@@ -9,6 +9,12 @@ of it. This repo has no PRD/TDD of its own yet; the closest thing to a design do
 prod`) — not this one. Read those two first for the *why* behind the stack choices; this
 file is for what happened building on top of them.
 
+**Newer changes (2026-08-20 onward, spanning both this repo and the backend) are logged
+in one place at
+[`../../ACRev360-backend-latest/docs/CHANGELOG.md`](../../ACRev360-backend-latest/docs/CHANGELOG.md)
+instead of here** — read that file before starting any new request, then come back to
+this one for the earlier scaffold-and-audit history below.
+
 **If you're a new session reading this:** the plan this build followed is saved at
 `C:\Users\Star2knb\.claude\plans\smooth-cooking-nautilus.md` (approved, executed in full
 through live verification, including the write path and a real test suite). This file
