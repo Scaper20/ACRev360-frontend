@@ -26,3 +26,22 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+  - type: web
+    name: acrev360-field
+    runtime: static
+    buildCommand: npm install && npm run build --workspace=apps/field
+    staticPublishPath: ./apps/field/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_API_BASE_URL
+        value: https://acrev360-backend-wxu8.onrender.com
+    # Same SPA-rewrite need as the portal above. Real files (sw.js,
+    # manifest.json, hashed assets under /assets/*) are still served directly
+    # — Render only falls back to this rewrite when no file exists at the
+    # requested path, confirmed live on the portal's own deploy.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
