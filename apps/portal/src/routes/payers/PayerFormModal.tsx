@@ -1,18 +1,34 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
 import { Field, GroupedChecklist, Input, Modal, Notice, Row, Select, useToast } from '@acrev360/ui';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 import { sha256Hex } from '../../lib/hash';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards } from '../../lib/wards';
 
 export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL' | 'BUSINESS'; onClose: () => void }) {
   const isIndividual = payerType === 'INDIVIDUAL';
+  const { user } = useAuth();
+  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const { data: wards } = useWards();
   const { data: revenueItems } = useRevenueItems();
   const toast = useToast();
   const queryClient = useQueryClient();
+
+  // Only an admin registering on a consultant's behalf needs this — a
+  // consultant/agent registering their own payer is enumerated_by
+  // themselves automatically, same as it always was.
+  const { data: consultants } = useQuery({
+    queryKey: ['consultants'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -20,6 +36,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const [ward, setWard] = useState<number | ''>('');
   const [address, setAddress] = useState('');
   const [businessSize, setBusinessSize] = useState('');
+  const [assignedConsultantId, setAssignedConsultantId] = useState<number | ''>('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<{ full_name: string; payer_ref: string } | null>(null);
@@ -51,6 +68,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         force,
         ...(idNum.trim() ? (isIndividual ? { nin_bvn_hash: await sha256Hex(idNum.trim()) } : { tin: idNum.trim() }) : {}),
         ...(!isIndividual && businessSize ? { business_size: businessSize as components['schemas']['BusinessSizeEnum'] } : {}),
+        ...(isAdmin && assignedConsultantId ? { assigned_consultant_id: assignedConsultantId } : {}),
       };
 
       const { data, error, response } = await apiClient.POST('/api/v1/payers', { body });
@@ -130,6 +148,18 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
           <Input value={address} onChange={(e) => setAddress(e.target.value)} />
         </Field>
       </Row>
+      {isAdmin && (
+        <Field label="Assign to consultant (optional)">
+          <Select value={assignedConsultantId} onChange={(e) => setAssignedConsultantId(Number(e.target.value) || '')}>
+            <option value="">— Council direct —</option>
+            {consultants?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.consultant_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <Field label="Revenue items liable (optional — enumerate what applies now)">
         <GroupedChecklist
           items={groupedItems}
