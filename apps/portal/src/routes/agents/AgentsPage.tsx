@@ -238,11 +238,17 @@ export function AgentsPage() {
             <Field label="Consultant">
               <select value={onboardConsultantId} onChange={(e) => setOnboardConsultantId(Number(e.target.value) || '')}>
                 <option value="">Choose a consultant…</option>
-                {consultants?.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.consultant_name}
-                  </option>
-                ))}
+                {/* A new consultant defaults to PENDING until explicitly activated
+                    — the backend only accepts an ACTIVE one here, so a PENDING/
+                    SUSPENDED/EXITED firm would otherwise look pickable and then
+                    always 400. */}
+                {consultants
+                  ?.filter((c) => c.status === 'ACTIVE')
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.consultant_name}
+                    </option>
+                  ))}
               </select>
             </Field>
           )}

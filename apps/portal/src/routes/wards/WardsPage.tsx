@@ -2,6 +2,7 @@ import { apiClient, errorMessage } from '@acrev360/api';
 import { Button, Field, Input, Modal, NumCell, Select, Tag, TableWrap, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 const ZONE_TYPES = [
   { value: 'WARD', label: 'Ward' },
@@ -10,6 +11,8 @@ const ZONE_TYPES = [
 ] as const;
 
 export function WardsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const toast = useToast();
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -51,9 +54,11 @@ export function WardsPage() {
     <>
       <div className="toolbar">
         <div className="grow" />
-        <Button variant="primary" onClick={() => setAddOpen(true)}>
-          Add Ward
-        </Button>
+        {isAdmin && (
+          <Button variant="primary" onClick={() => setAddOpen(true)}>
+            Add Ward
+          </Button>
+        )}
       </div>
       <div className="card">
         <TableWrap>
@@ -94,7 +99,7 @@ export function WardsPage() {
         </TableWrap>
       </div>
 
-      {addOpen && (
+      {isAdmin && addOpen && (
         <Modal
           open
           onClose={() => setAddOpen(false)}

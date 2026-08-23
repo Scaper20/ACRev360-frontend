@@ -152,11 +152,16 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         <Field label="Assign to consultant (optional)">
           <Select value={assignedConsultantId} onChange={(e) => setAssignedConsultantId(Number(e.target.value) || '')}>
             <option value="">— Council direct —</option>
-            {consultants?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.consultant_name}
-              </option>
-            ))}
+            {/* Same reasoning as AgentsPage's onboard form — a consultant
+                defaults to PENDING until activated; the backend only accepts
+                an ACTIVE one for this assignment. */}
+            {consultants
+              ?.filter((c) => c.status === 'ACTIVE')
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.consultant_name}
+                </option>
+              ))}
           </Select>
         </Field>
       )}
