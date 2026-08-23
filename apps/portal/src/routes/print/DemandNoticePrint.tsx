@@ -31,6 +31,12 @@ export function DemandNoticePrint() {
   const noticeNo = 2000 + (Number(billRefDigits) % 8000);
   const today = new Date();
   const arrears = Number(bill.arrears_amount);
+  const amountPaid = Number(bill.amount_paid);
+  // The notice is a demand for what's still owed, not a record of the full
+  // original assessment — grandTotal is already bill.balance (net of any
+  // payment), but the line items above it are the gross original amounts.
+  // Surface the deduction explicitly so the arithmetic is honest rather than
+  // showing gross line items that silently don't sum to the grand total.
   const grandTotal = Number(bill.balance);
 
   return (
@@ -117,8 +123,14 @@ export function DemandNoticePrint() {
               ))}
           </tbody>
           <tfoot>
+            {amountPaid > 0 && (
+              <tr>
+                <td colSpan={5}>Less: Amount Already Paid</td>
+                <td className="num">({money2(amountPaid)})</td>
+              </tr>
+            )}
             <tr>
-              <td colSpan={5}>Grand Total</td>
+              <td colSpan={5}>Grand Total — Amount Owed</td>
               <td className="num">{money2(grandTotal)}</td>
             </tr>
           </tfoot>

@@ -112,6 +112,13 @@ export function ReceiptsPage() {
             <span className="num">{money2(receipt.amount)}</span>
           </KV>
           <KV label="Issued">{dateTime(receipt.created_at)}</KV>
+
+          <h3 style={{ margin: '14px 0 6px' }}>Paid For</h3>
+          {receipt.lines.map((l) => (
+            <KV key={l.id} label={l.item_name + (l.band_label ? ` (${l.band_label}${l.tier_label ? ` — ${l.tier_label}` : ''})` : '')}>
+              <span className="num">{money2(l.line_amount)}</span>
+            </KV>
+          ))}
           <KV label="Verification token">
             <span className="num">{receipt.qr_token}</span>
           </KV>

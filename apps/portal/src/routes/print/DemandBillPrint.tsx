@@ -41,6 +41,8 @@ export function DemandBillPrint() {
   const year = new Date(bill.due_date).getFullYear();
   const billRefDigits = (billRef.match(/\d+$/)?.[0] ?? '0').slice(-4);
   const arrears = Number(bill.arrears_amount);
+  const initialAmount = Number(bill.total_amount);
+  const amountPaid = Number(bill.amount_paid);
   const totalDue = Number(bill.balance);
 
   return (
@@ -141,13 +143,25 @@ export function DemandBillPrint() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>Hours of Payment: Monday &ndash; Friday, 8:00 a.m. &ndash; 4:00 p.m.</td>
-              <td>
+              <td colSpan={2} rowSpan={amountPaid > 0 ? 3 : 2}>
+                Hours of Payment: Monday &ndash; Friday, 8:00 a.m. &ndash; 4:00 p.m.
+              </td>
+              <td rowSpan={amountPaid > 0 ? 3 : 2}>
                 Harmonized Bill Reference
                 <br />
                 <span style={{ fontWeight: 400 }}>{bill.bill_ref}</span>
               </td>
-              <td colSpan={3}>Total Due</td>
+              <td colSpan={3}>Initial Amount</td>
+              <td className="num">{money2(initialAmount)}</td>
+            </tr>
+            {amountPaid > 0 && (
+              <tr>
+                <td colSpan={3}>Amount Paid</td>
+                <td className="num">({money2(amountPaid)})</td>
+              </tr>
+            )}
+            <tr>
+              <td colSpan={3}>Balance Due</td>
               <td className="num">{money2(totalDue)}</td>
             </tr>
           </tfoot>
@@ -177,7 +191,15 @@ export function DemandBillPrint() {
                 <b>Area Council:</b> Kuje Area Council
               </div>
               <div className="kv">
-                <b>Total Due:</b> {money2(totalDue)}
+                <b>Initial Amount:</b> {money2(initialAmount)}
+              </div>
+              {amountPaid > 0 && (
+                <div className="kv">
+                  <b>Amount Paid:</b> ({money2(amountPaid)})
+                </div>
+              )}
+              <div className="kv">
+                <b>Balance Due:</b> {money2(totalDue)}
               </div>
               <div className="print-sig">Chief Revenue Officer</div>
             </div>

@@ -2217,6 +2217,7 @@ export interface components {
             readonly full_name: string;
             /** Format: decimal */
             readonly amount: string;
+            readonly lines: components["schemas"]["BillLineDetail"][];
             /** Format: uuid */
             readonly qr_token: string;
             readonly verified_count: number;
