@@ -1,5 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import { Field, Modal, Notice, TypeaheadPicker, money, useToast } from '@acrev360/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { searchPayers } from '../../lib/payerSearch';
@@ -21,6 +22,7 @@ const LINK_BUTTON_STYLE: CSSProperties = { background: 'none', border: 'none', p
 export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCreated: (billId: number) => void }) {
   const { data: revenueItems } = useRevenueItems();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const [payer, setPayer] = useState<PayerHit | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -56,6 +58,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
       });
       if (error) throw new Error(errorMessage(error));
       toast(`Bill issued — ${data.bill_ref} (${money(data.total_amount)})` + (Number(data.arrears_amount) > 0 ? ` · ${money(data.arrears_amount)} arrears consolidated` : ''));
+      await queryClient.invalidateQueries({ queryKey: ['bills'] });
       onCreated(data.id);
       onClose();
     } catch (e) {
