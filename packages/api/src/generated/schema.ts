@@ -812,6 +812,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/receipts/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Emails/SMSes the receipt to whatever contact info the payer has on
+         *     file. Neither channel is required to succeed — see
+         *     apps.payments.notifications.send_receipt for why.
+         */
+        post: operations["v1_receipts_send_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reconciliation": {
         parameters: {
             query?: never;
@@ -1465,6 +1486,7 @@ export interface components {
             payer_type: components["schemas"]["PayerTypeEnum"];
             full_name: string;
             phone?: string;
+            email?: string;
             address?: string;
             ward: number;
             nin_bvn_hash?: string;
@@ -2045,6 +2067,7 @@ export interface components {
             payer_type: components["schemas"]["PayerTypeEnum"];
             full_name: string;
             phone?: string;
+            email?: string;
             address?: string;
             ward: number;
             nin_bvn_hash?: string;
@@ -2060,6 +2083,7 @@ export interface components {
             payer_type: components["schemas"]["PayerTypeEnum"];
             full_name: string;
             phone?: string;
+            email?: string;
             address?: string;
             ward: number;
             nin_bvn_hash?: string;
@@ -2287,6 +2311,22 @@ export interface components {
             /** Format: date */
             date: string;
             channel_code: string;
+        };
+        SendReceiptEmailResult: {
+            attempted: boolean;
+            sent?: boolean;
+            reason?: string;
+            error?: string;
+        };
+        SendReceiptResponse: {
+            email: components["schemas"]["SendReceiptEmailResult"];
+            sms: components["schemas"]["SendReceiptSmsResult"];
+        };
+        SendReceiptSmsResult: {
+            attempted: boolean;
+            sent?: boolean;
+            reason?: string;
+            error?: string;
         };
         SettlementStatusRequest: {
             status: components["schemas"]["Status5d5Enum"];
@@ -3880,6 +3920,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedReceiptList"];
+                };
+            };
+        };
+    };
+    v1_receipts_send_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendReceiptResponse"];
                 };
             };
         };

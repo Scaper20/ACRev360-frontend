@@ -32,6 +32,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [idNum, setIdNum] = useState('');
   const [ward, setWard] = useState<number | ''>('');
   const [address, setAddress] = useState('');
@@ -62,6 +63,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         full_name: fullName.trim(),
         payer_type: payerType,
         phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
         address: address.trim() || undefined,
         ward: ward as number,
         revenue_item_ids: [...selected],
@@ -111,6 +113,11 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         </Field>
         <Field label="Phone">
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </Field>
+      </Row>
+      <Row>
+        <Field label="Email (optional — for sending receipts)">
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
       </Row>
       <Row>

@@ -7,6 +7,7 @@ export function ReceiptsPage() {
   const [detail, setDetail] = useState<number | null>(null);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [sending, setSending] = useState(false);
   const toast = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
@@ -37,6 +38,24 @@ export function ReceiptsPage() {
     }
     toast(`Valid — ${data.receipt_ref} · ${money2(data.amount)} · ${data.payer_name}`);
     await queryClient.invalidateQueries({ queryKey: ['receipts'] });
+  }
+
+  async function sendReceipt(id: number) {
+    setSending(true);
+    try {
+      const { data, error } = await apiClient.POST('/api/v1/receipts/{id}/send', { params: { path: { id: String(id) } } });
+      if (error) {
+        toast(errorMessage(error), true);
+        return;
+      }
+      const parts: string[] = [];
+      parts.push(data.email.attempted ? (data.email.sent ? 'Email sent' : `Email failed: ${data.email.error}`) : `Email skipped — ${data.email.reason}`);
+      parts.push(data.sms.attempted ? (data.sms.sent ? 'SMS sent' : `SMS failed: ${data.sms.error}`) : `SMS skipped — ${data.sms.reason}`);
+      const failed = (data.email.attempted && !data.email.sent) || (data.sms.attempted && !data.sms.sent);
+      toast(parts.join(' · '), failed);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -95,6 +114,9 @@ export function ReceiptsPage() {
           title={`Receipt — ${receipt.receipt_ref}`}
           footer={
             <>
+              <button className="btn btn-ghost" onClick={() => sendReceipt(receipt.id)} disabled={sending}>
+                {sending ? 'Sending…' : 'Send Receipt'}
+              </button>
               <button className="btn btn-brass" onClick={() => verify(receipt.qr_token)}>
                 Verify
               </button>
