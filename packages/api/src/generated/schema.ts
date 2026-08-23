@@ -1473,6 +1473,7 @@ export interface components {
             revenue_item_ids?: number[];
             /** @default false */
             force: boolean;
+            assigned_consultant_id?: number | null;
         };
         DashboardGlobalResponse: {
             by_consultant: components["schemas"]["CollectedByConsultant"][];

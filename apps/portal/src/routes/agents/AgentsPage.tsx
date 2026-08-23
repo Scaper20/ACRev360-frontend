@@ -22,6 +22,7 @@ export function AgentsPage() {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [ward, setWard] = useState<number | ''>('');
+  const [onboardConsultantId, setOnboardConsultantId] = useState<number | ''>('');
   const [page, setPage] = useState(1);
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [q, setQ] = useState('');
@@ -124,9 +125,22 @@ export function AgentsPage() {
       toast("Enter the agent's name and a username", true);
       return;
     }
+    // Council-direct agents (no consultant) are retired — a consultant
+    // onboarding their own agent is auto-assigned to themselves server-side
+    // regardless, but admin must pick one explicitly now.
+    if (isAdmin && !onboardConsultantId) {
+      toast('Choose which consultant this agent belongs to', true);
+      return;
+    }
     try {
       const { error } = await apiClient.POST('/api/v1/agents', {
-        body: { full_name: fullName.trim(), username: username.trim(), phone: phone.trim() || undefined, assigned_ward: ward || undefined },
+        body: {
+          full_name: fullName.trim(),
+          username: username.trim(),
+          phone: phone.trim() || undefined,
+          assigned_ward: ward || undefined,
+          ...(isAdmin ? { consultant_id: onboardConsultantId } : {}),
+        },
       });
       if (error) throw new Error(errorMessage(error));
       toast('Agent onboarded');
@@ -134,6 +148,7 @@ export function AgentsPage() {
       setFullName('');
       setUsername('');
       setPhone('');
+      setOnboardConsultantId('');
       await queryClient.invalidateQueries({ queryKey: ['agents'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not onboard agent', true);
@@ -219,6 +234,18 @@ export function AgentsPage() {
           <Field label="Phone">
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
+          {isAdmin && (
+            <Field label="Consultant">
+              <select value={onboardConsultantId} onChange={(e) => setOnboardConsultantId(Number(e.target.value) || '')}>
+                <option value="">Choose a consultant…</option>
+                {consultants?.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.consultant_name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Assigned ward">
             <select value={ward} onChange={(e) => setWard(Number(e.target.value) || '')}>
               <option value="">—</option>
