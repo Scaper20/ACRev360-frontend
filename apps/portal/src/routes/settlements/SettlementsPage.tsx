@@ -34,13 +34,27 @@ export function SettlementsPage() {
     setPage(1);
   }
 
+  // No real payment can predate the platform itself — this is "all time" in
+  // practice without needing period_start to be genuinely optional (it's a
+  // required DateField on both the request serializer and the model, keyed
+  // into the settlement row's own uniqueness constraint; making it nullable
+  // would need a migration for what's really just a convenience default).
+  function useAllTime() {
+    setPeriodStart('2000-01-01');
+    setPeriodEnd(new Date().toISOString().slice(0, 10));
+  }
+
   async function compute() {
-    if (!periodEnd) {
-      toast('Choose a period end date', true);
+    // period_start is actually required by the backend (a plain DateField,
+    // not optional) despite this field previously being labeled "(optional)"
+    // and sent as undefined when blank — that combination would 400 the
+    // moment someone left it empty. Caught while wiring up "All time".
+    if (!periodStart || !periodEnd) {
+      toast('Choose a period start and end date, or use All time', true);
       return;
     }
     try {
-      const { error } = await apiClient.POST('/api/v1/settlements/compute', { body: { period_start: periodStart || undefined, period_end: periodEnd } });
+      const { error } = await apiClient.POST('/api/v1/settlements/compute', { body: { period_start: periodStart, period_end: periodEnd } });
       if (error) throw new Error(errorMessage(error));
       toast('Settlements computed');
       setComputeOpen(false);
@@ -140,12 +154,15 @@ export function SettlementsPage() {
             </>
           }
         >
-          <Field label="Period start (optional)">
+          <Field label="Period start">
             <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
           </Field>
           <Field label="Period end">
             <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           </Field>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={useAllTime}>
+            All time
+          </button>
         </Modal>
       )}
 
