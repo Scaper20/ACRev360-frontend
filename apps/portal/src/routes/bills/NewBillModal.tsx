@@ -30,6 +30,29 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  function addLine(line: DraftLine) {
+    setLines((prev) => {
+      // A RANGE band's amount is manually chosen per addition and can
+      // legitimately differ between two additions of the same band (e.g.
+      // two different dealers assessed at different points in the same
+      // range) — never pre-merge those here, since collapsing to one
+      // quantity×override would silently change the total the moment two
+      // overrides differ. The backend still merges them correctly on
+      // submit (billing.services' identical fix), since it sums each
+      // line's own already-computed amount rather than re-deriving one
+      // from a single stored override.
+      if (line.amountOverride == null) {
+        const idx = prev.findIndex((l) => l.revenueItemId === line.revenueItemId && l.rateBandId === line.rateBandId && l.rateTierId === line.rateTierId);
+        if (idx !== -1) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], quantity: next[idx].quantity + line.quantity, amount: next[idx].amount + line.amount };
+          return next;
+        }
+      }
+      return [...prev, line];
+    });
+  }
+
   async function submit() {
     if (!payer) {
       setError('Search and select a payer first');
@@ -101,7 +124,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
         </div>
       )}
 
-      <RevenueItemLinePicker items={revenueItems ?? []} onAdd={(line) => setLines((prev) => [...prev, line])} />
+      <RevenueItemLinePicker items={revenueItems ?? []} onAdd={addLine} />
 
       {lines.length > 0 && (
         <div style={{ marginTop: 8 }}>
