@@ -11,14 +11,16 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
-      # packages/api/src/client.ts's production fallback still hardcodes the
-      # *old*, disconnected backend service's URL (acrev360-backend.onrender.com,
-      # not tracked as a Blueprint in this workspace) — this explicit value is
-      # what actually wins at build time (Vite inlines env vars, so a change
-      # here needs a new deploy, not just a restart). See CHANGELOG.md's
-      # "First live deploy" entry for why there are two backend URLs.
+      # Points at Scaper20's original backend (acrev360-backend.onrender.com),
+      # not this session's own separate -wxu8 deployment — consolidating onto
+      # his single backend/database rather than running two. This explicit
+      # value wins over packages/api/src/client.ts's own production fallback
+      # at build time (Vite inlines env vars, so a change here needs a new
+      # deploy, not just a restart). Both his backend's ALLOWED_HOSTS fix and
+      # its Render suspension need to be resolved on his side before this
+      # actually resolves — see docs/CHANGELOG.md.
       - key: VITE_API_BASE_URL
-        value: https://acrev360-backend-wxu8.onrender.com
+        value: https://acrev360-backend.onrender.com
     # BrowserRouter (apps/portal/src/main.tsx) needs every path to fall back to
     # index.html, or a hard refresh on e.g. /payers 404s — there's no real file
     # at that path, only client-side routing resolves it.
@@ -36,7 +38,7 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: VITE_API_BASE_URL
-        value: https://acrev360-backend-wxu8.onrender.com
+        value: https://acrev360-backend.onrender.com
     # Same SPA-rewrite need as the portal above. Real files (sw.js,
     # manifest.json, hashed assets under /assets/*) are still served directly
     # — Render only falls back to this rewrite when no file exists at the
