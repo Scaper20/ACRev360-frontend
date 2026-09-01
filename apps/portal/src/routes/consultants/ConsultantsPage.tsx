@@ -4,7 +4,7 @@ import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, 
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards, wardNameLookup } from '../../lib/wards';
@@ -31,10 +31,15 @@ export function ConsultantsPage() {
   const [rate, setRate] = useState('30');
   const [managerName, setManagerName] = useState('');
   const [managerUsername, setManagerUsername] = useState('');
+  const [registrationWard, setRegistrationWard] = useState<number | ''>('');
+  const [onboardStart, setOnboardStart] = useState('');
+  const [onboardEnd, setOnboardEnd] = useState('');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [contractStart, setContractStart] = useState('');
+  const [contractEnd, setContractEnd] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['consultants', q, page],
@@ -102,6 +107,10 @@ export function ConsultantsPage() {
       toast('Enter a name and contract reference', true);
       return;
     }
+    if (registrationWard === '') {
+      toast("Select the consultant's registration ward", true);
+      return;
+    }
     if (managerUsername.trim() && !managerName.trim()) {
       toast("Enter the manager's name, or leave both manager fields blank", true);
       return;
@@ -112,6 +121,9 @@ export function ConsultantsPage() {
           consultant_name: name.trim(),
           contract_ref: contractRef.trim(),
           commission_rate: rate,
+          registration_ward_id: registrationWard,
+          contract_start_date: onboardStart || undefined,
+          contract_end_date: onboardEnd || undefined,
           ...(managerUsername.trim() ? { manager_username: managerUsername.trim(), manager_full_name: managerName.trim() } : {}),
         },
       });
@@ -122,6 +134,9 @@ export function ConsultantsPage() {
       setContractRef('');
       setManagerName('');
       setManagerUsername('');
+      setRegistrationWard('');
+      setOnboardStart('');
+      setOnboardEnd('');
       await queryClient.invalidateQueries({ queryKey: ['consultants'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not onboard consultant', true);
@@ -143,6 +158,29 @@ export function ConsultantsPage() {
   }
 
   const consultant = data?.results.find((c) => c.id === detailId);
+
+  // Re-sync the two date inputs to whatever's actually on the consultant
+  // every time the detail modal opens for a (possibly different) one —
+  // otherwise a stale value from the last consultant viewed would linger.
+  useEffect(() => {
+    setContractStart(consultant?.contract_start_date ?? '');
+    setContractEnd(consultant?.contract_end_date ?? '');
+  }, [consultant?.id]);
+
+  async function saveContractDates() {
+    if (detailId == null) return;
+    try {
+      const { error } = await apiClient.POST('/api/v1/consultants/{id}/contract_dates', {
+        params: { path: { id: String(detailId) } },
+        body: { contract_start_date: contractStart || null, contract_end_date: contractEnd || null },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast('Contract dates updated');
+      await queryClient.invalidateQueries({ queryKey: ['consultants'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not update contract dates', true);
+    }
+  }
 
   return (
     <>
@@ -221,6 +259,24 @@ export function ConsultantsPage() {
           <Field label="Commission rate (%)">
             <Input type="number" min={0} max={100} step={0.01} value={rate} onChange={(e) => setRate(e.target.value)} />
           </Field>
+          <Field label="Registration ward">
+            <select value={registrationWard} onChange={(e) => setRegistrationWard(Number(e.target.value) || '')}>
+              <option value="">— Select ward —</option>
+              {wards?.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.ward_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="row">
+            <Field label="Contract start (optional)">
+              <Input type="date" value={onboardStart} onChange={(e) => setOnboardStart(e.target.value)} />
+            </Field>
+            <Field label="Contract end (optional — blank = open-ended)">
+              <Input type="date" value={onboardEnd} onChange={(e) => setOnboardEnd(e.target.value)} />
+            </Field>
+          </div>
           <Field label="Manager login — username (optional)">
             <Input value={managerUsername} onChange={(e) => setManagerUsername(e.target.value)} placeholder="Leave blank to onboard without a login" />
           </Field>
@@ -249,6 +305,20 @@ export function ConsultantsPage() {
           <KV label="Manager login">
             <Tag variant={consultant.has_login ? 'ok' : 'neutral'}>{consultant.has_login ? 'Set up' : 'Not set up'}</Tag>
           </KV>
+          <KV label="Contract dates">
+            {consultant.contract_start_date || consultant.contract_end_date ? (
+              <>
+                {consultant.contract_start_date ?? '—'} to {consultant.contract_end_date ?? 'open-ended'}
+                {consultant.is_contract_expired && (
+                  <span style={{ marginLeft: 8 }}>
+                    <Tag variant="bad">Expired</Tag>
+                  </span>
+                )}
+              </>
+            ) : (
+              'Not set'
+            )}
+          </KV>
           {isAdmin && (
             <Field label="Change status">
               <Select value={consultant.status} onChange={(e) => changeStatus(consultant.id, e.target.value)}>
@@ -259,6 +329,21 @@ export function ConsultantsPage() {
                 ))}
               </Select>
             </Field>
+          )}
+          {isAdmin && (
+            <div className="row" style={{ marginTop: 10 }}>
+              <Field label="Contract start">
+                <Input type="date" value={contractStart} onChange={(e) => setContractStart(e.target.value)} />
+              </Field>
+              <Field label="Contract end (blank = open-ended)">
+                <Input type="date" value={contractEnd} onChange={(e) => setContractEnd(e.target.value)} />
+              </Field>
+              <Field label="&nbsp;">
+                <button className="btn btn-ghost" type="button" onClick={saveContractDates}>
+                  Save dates
+                </button>
+              </Field>
+            </div>
           )}
 
           <h3 style={{ margin: '18px 0 8px' }}>Assigned revenue items ({portfolioQuery.data?.length ?? 0})</h3>

@@ -463,6 +463,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consultants/{id}/contract_dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_consultants_contract_dates_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consultants/{id}/portfolio": {
         parameters: {
             query?: never;
@@ -489,6 +505,36 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1_consultants_portfolio_end_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consultants/{id}/revenue-officers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Onboards (or lists) REVENUE_OFFICER logins scoped to this one
+         *     consultant — read-only accounts that get the exact same portfolio
+         *     visibility as the consultant's own manager (see common.scoping.
+         *     portfolio_filter), enforced by staying off every mutation endpoint's
+         *     permission_classes rather than by anything checked here.
+         */
+        get: operations["v1_consultants_revenue_officers_list"];
+        put?: never;
+        /**
+         * @description Onboards (or lists) REVENUE_OFFICER logins scoped to this one
+         *     consultant — read-only accounts that get the exact same portfolio
+         *     visibility as the consultant's own manager (see common.scoping.
+         *     portfolio_filter), enforced by staying off every mutation endpoint's
+         *     permission_classes rather than by anything checked here.
+         */
+        post: operations["v1_consultants_revenue_officers_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -621,6 +667,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List/create/edit council departments for grouping revenue items under —
+         *     see CouncilRevenueItemViewSet.department for the assignment side.
+         */
+        get: operations["v1_departments_list"];
+        put?: never;
+        /**
+         * @description List/create/edit council departments for grouping revenue items under —
+         *     see CouncilRevenueItemViewSet.department for the assignment side.
+         */
+        post: operations["v1_departments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/departments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List/create/edit council departments for grouping revenue items under —
+         *     see CouncilRevenueItemViewSet.department for the assignment side.
+         */
+        get: operations["v1_departments_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description List/create/edit council departments for grouping revenue items under —
+         *     see CouncilRevenueItemViewSet.department for the assignment side.
+         */
+        patch: operations["v1_departments_partial_update"];
         trace?: never;
     };
     "/api/v1/health": {
@@ -902,6 +996,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_reports_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/revenue-categories": {
         parameters: {
             query?: never;
@@ -960,6 +1070,26 @@ export interface paths {
         get: operations["v1_revenue_items_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/revenue-items/{id}/department": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Only COUNCIL_ADMIN may (re)assign which department an item belongs
+         *     to — pass department_id: null to clear it.
+         */
+        post: operations["v1_revenue_items_department_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1260,6 +1390,14 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `NIN` - NIN
+         *     * `PASSPORT` - International Passport
+         *     * `DRIVERS_LICENSE` - Driver's License
+         *     * `VOTERS_CARD` - Voter's Card
+         * @enum {string}
+         */
+        AuthorizedSignatoryIdTypeEnum: "NIN" | "PASSPORT" | "DRIVERS_LICENSE" | "VOTERS_CARD";
         Bill: {
             readonly id: number;
             readonly bill_ref: string;
@@ -1481,6 +1619,8 @@ export interface components {
             readonly current_rate: string;
             readonly rate_id: number;
             readonly rate_bands: components["schemas"]["RateBand"][];
+            readonly department: number | null;
+            readonly department_name: string;
         };
         CreatePayerRequest: {
             payer_type: components["schemas"]["PayerTypeEnum"];
@@ -1535,6 +1675,19 @@ export interface components {
         DebtRefreshResponse: {
             opened: number;
             updated: number;
+        };
+        Department: {
+            readonly id: number;
+            department_name: string;
+            department_code?: string;
+            head_name?: string;
+            head_phone?: string;
+        };
+        DepartmentRequest: {
+            department_name: string;
+            department_code?: string;
+            head_name?: string;
+            head_phone?: string;
         };
         DraftAssessment: {
             id: number;
@@ -1596,6 +1749,10 @@ export interface components {
             readonly consultant_id: number;
             readonly agent_full_name: string;
             readonly agent_phone: string;
+            id_type?: components["schemas"]["IdTypeEnum"] | components["schemas"]["BlankEnum"];
+            id_hash?: string;
+            next_of_kin_name?: string;
+            next_of_kin_phone?: string;
         };
         FieldAgentRequest: {
             assigned_ward?: number | null;
@@ -1604,6 +1761,10 @@ export interface components {
             username: string;
             password?: string;
             phone?: string;
+            id_type?: components["schemas"]["IdTypeEnum"] | components["schemas"]["BlankEnum"];
+            id_hash?: string;
+            next_of_kin_name?: string;
+            next_of_kin_phone?: string;
         };
         /**
          * @description * `ACTIVE` - Active
@@ -1638,6 +1799,14 @@ export interface components {
             /** Format: date-time */
             time: string;
         };
+        /**
+         * @description * `NIN` - NIN
+         *     * `PASSPORT` - International Passport
+         *     * `DRIVERS_LICENSE` - Driver's License
+         *     * `VOTERS_CARD` - Voter's Card
+         * @enum {string}
+         */
+        IdTypeEnum: "NIN" | "PASSPORT" | "DRIVERS_LICENSE" | "VOTERS_CARD";
         IssueBillRequest: {
             payer_id: number;
             /** Format: date */
@@ -1839,6 +2008,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["DebtCase"][];
         };
+        PaginatedDepartmentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Department"][];
+        };
         PaginatedEnumeratedAssetList: {
             /** @example 123 */
             count: number;
@@ -1989,6 +2173,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RevenueItemTemplate"][];
         };
+        PaginatedRevenueOfficerList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RevenueOfficer"][];
+        };
         PaginatedStakeholderList: {
             /** @example 123 */
             count: number;
@@ -2048,6 +2247,12 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["WorklistPayer"][];
+        };
+        PatchedDepartmentRequest: {
+            department_name?: string;
+            department_code?: string;
+            head_name?: string;
+            head_phone?: string;
         };
         /**
          * @description PATCH /auth/me — deliberately a narrow, separate serializer rather than
@@ -2286,6 +2491,13 @@ export interface components {
         ReplaceRateBandsRequest: {
             bands?: components["schemas"]["RateBandEntryRequest"][];
         };
+        ReportResponse: {
+            entity: string;
+            group_by: string[];
+            rows: {
+                [key: string]: unknown;
+            }[];
+        };
         ResolveExceptionRequest: {
             note: string;
         };
@@ -2302,6 +2514,33 @@ export interface components {
             readonly category_name: string;
             unit_of_charge: string;
             in_initial_scope?: boolean;
+        };
+        /**
+         * @description Read-only, single-consultant-scoped oversight account — see
+         *     SubConsultantViewSet.revenue_officers. Same onboarding payload shape as
+         *     StakeholderSerializer, kept separate since it's a distinct role tied to
+         *     one consultant rather than a council-wide GLOBAL_VIEW account.
+         */
+        RevenueOfficer: {
+            readonly id: number;
+            username: string;
+            full_name: string;
+            phone?: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly date_joined: string;
+        };
+        /**
+         * @description Read-only, single-consultant-scoped oversight account — see
+         *     SubConsultantViewSet.revenue_officers. Same onboarding payload shape as
+         *     StakeholderSerializer, kept separate since it's a distinct role tied to
+         *     one consultant rather than a council-wide GLOBAL_VIEW account.
+         */
+        RevenueOfficerRequest: {
+            username: string;
+            full_name: string;
+            phone?: string;
+            password?: string;
         };
         ReversePaymentRequest: {
             /** @default  */
@@ -2327,6 +2566,9 @@ export interface components {
             sent?: boolean;
             reason?: string;
             error?: string;
+        };
+        SetDepartmentRequest: {
+            department_id: number | null;
         };
         SettlementStatusRequest: {
             status: components["schemas"]["Status5d5Enum"];
@@ -2382,9 +2624,29 @@ export interface components {
              */
             commission_rate: string;
             readonly status: components["schemas"]["StatusC83Enum"];
+            /** Format: date */
+            contract_start_date?: string | null;
+            /**
+             * Format: date
+             * @description Blank for an open-ended contract.
+             */
+            contract_end_date?: string | null;
+            readonly is_contract_expired: boolean;
             /** Format: date-time */
             readonly created_at: string;
             readonly has_login: string;
+            readonly registration_payer: number | null;
+            readonly registration_payer_ref: string;
+            authorized_signatory_name?: string;
+            authorized_signatory_id_type?: components["schemas"]["AuthorizedSignatoryIdTypeEnum"] | components["schemas"]["BlankEnum"];
+            authorized_signatory_id_hash?: string;
+            registered_address?: string;
+        };
+        SubConsultantContractDatesRequest: {
+            /** Format: date */
+            contract_start_date?: string | null;
+            /** Format: date */
+            contract_end_date?: string | null;
         };
         SubConsultantRequest: {
             consultant_name: string;
@@ -2394,9 +2656,21 @@ export interface components {
              * @description Percent, e.g. 30.00
              */
             commission_rate: string;
+            /** Format: date */
+            contract_start_date?: string | null;
+            /**
+             * Format: date
+             * @description Blank for an open-ended contract.
+             */
+            contract_end_date?: string | null;
             manager_username?: string;
             manager_password?: string;
             manager_full_name?: string;
+            registration_ward_id: number;
+            authorized_signatory_name?: string;
+            authorized_signatory_id_type?: components["schemas"]["AuthorizedSignatoryIdTypeEnum"] | components["schemas"]["BlankEnum"];
+            authorized_signatory_id_hash?: string;
+            registered_address?: string;
         };
         SubConsultantStatusRequest: {
             status: components["schemas"]["StatusC83Enum"];
@@ -2413,11 +2687,19 @@ export interface components {
          *     DecimalField-to-string formatting only happens by going through this
          *     serializer, not by building a response dict by hand (see the git history
          *     on PublicBillLookupView for the bug that shipped from doing that once).
+         *
+         *     `lines` exposes each superseded bill's own itemized BillLines — issue_bill's
+         *     roll_arrears never touches them, it only flips the prior bill's status to
+         *     SUPERSEDED and sums its balance into the new bill's arrears_amount. So the
+         *     line-level detail behind that lump sum was always sitting right here,
+         *     unexposed — this is a read-only addition, no new storage or change to
+         *     roll_arrears itself.
          */
         SupersededBill: {
             bill_ref: string;
             /** Format: decimal */
             amount: string;
+            readonly lines: components["schemas"]["BillLineDetail"][];
         };
         SyncOutcome: {
             client_id: string;
@@ -3355,6 +3637,33 @@ export interface operations {
             };
         };
     };
+    v1_consultants_contract_dates_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SubConsultantContractDatesRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubConsultantContractDatesRequest"];
+                "multipart/form-data": components["schemas"]["SubConsultantContractDatesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubConsultant"];
+                };
+            };
+        };
+    };
     v1_consultants_portfolio_list: {
         parameters: {
             query?: never;
@@ -3421,6 +3730,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConsultantPortfolio"];
+                };
+            };
+        };
+    };
+    v1_consultants_revenue_officers_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRevenueOfficerList"];
+                };
+            };
+        };
+    };
+    v1_consultants_revenue_officers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevenueOfficerRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RevenueOfficerRequest"];
+                "multipart/form-data": components["schemas"]["RevenueOfficerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueOfficer"];
                 };
             };
         };
@@ -3575,6 +3935,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DebtRefreshResponse"];
+                };
+            };
+        };
+    };
+    v1_departments_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDepartmentList"];
+                };
+            };
+        };
+    };
+    v1_departments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DepartmentRequest"];
+                "multipart/form-data": components["schemas"]["DepartmentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"];
+                };
+            };
+        };
+    };
+    v1_departments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"];
+                };
+            };
+        };
+    };
+    v1_departments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDepartmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedDepartmentRequest"];
+                "multipart/form-data": components["schemas"]["PatchedDepartmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Department"];
                 };
             };
         };
@@ -4042,6 +4497,36 @@ export interface operations {
             };
         };
     };
+    v1_reports_retrieve: {
+        parameters: {
+            query: {
+                consultant_id?: number;
+                date_from?: string;
+                date_to?: string;
+                /** @description PAYERS | BILLS | PAYMENTS | SETTLEMENTS */
+                entity: string;
+                /** @description Repeatable, max 2 — ward, revenue_item, consultant, date */
+                group_by?: string;
+                /** @description BILLS only */
+                revenue_item_id?: number;
+                ward_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponse"];
+                };
+            };
+        };
+    };
     v1_revenue_categories_list: {
         parameters: {
             query?: {
@@ -4118,6 +4603,33 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouncilRevenueItem"];
+                };
+            };
+        };
+    };
+    v1_revenue_items_department_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDepartmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SetDepartmentRequest"];
+                "multipart/form-data": components["schemas"]["SetDepartmentRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
