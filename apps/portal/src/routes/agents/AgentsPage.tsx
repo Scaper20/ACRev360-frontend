@@ -1,13 +1,17 @@
 import { apiClient, errorMessage } from '@acrev360/api';
+import type { components } from '@acrev360/api';
 import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, TableWrap, Tag, dateTime, money, money2, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { sha256Hex } from '../../lib/hash';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral' };
+const ID_TYPES = ['NIN', 'PASSPORT', 'DRIVERS_LICENSE', 'VOTERS_CARD'] as const;
+const ID_TYPE_LABEL: Record<string, string> = { NIN: 'NIN', PASSPORT: "International Passport", DRIVERS_LICENSE: "Driver's License", VOTERS_CARD: "Voter's Card" };
 
 export function AgentsPage() {
   const { user } = useAuth();
@@ -23,6 +27,10 @@ export function AgentsPage() {
   const [phone, setPhone] = useState('');
   const [ward, setWard] = useState<number | ''>('');
   const [onboardConsultantId, setOnboardConsultantId] = useState<number | ''>('');
+  const [idType, setIdType] = useState('');
+  const [idNumber, setIdNumber] = useState('');
+  const [nokName, setNokName] = useState('');
+  const [nokPhone, setNokPhone] = useState('');
   const [page, setPage] = useState(1);
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [q, setQ] = useState('');
@@ -140,6 +148,10 @@ export function AgentsPage() {
           phone: phone.trim() || undefined,
           assigned_ward: ward || undefined,
           ...(isAdmin ? { consultant_id: onboardConsultantId } : {}),
+          ...(idType ? { id_type: idType as components['schemas']['IdTypeEnum'] } : {}),
+          ...(idNumber.trim() ? { id_hash: await sha256Hex(idNumber.trim()) } : {}),
+          next_of_kin_name: nokName.trim() || undefined,
+          next_of_kin_phone: nokPhone.trim() || undefined,
         },
       });
       if (error) throw new Error(errorMessage(error));
@@ -149,6 +161,10 @@ export function AgentsPage() {
       setUsername('');
       setPhone('');
       setOnboardConsultantId('');
+      setIdType('');
+      setIdNumber('');
+      setNokName('');
+      setNokPhone('');
       await queryClient.invalidateQueries({ queryKey: ['agents'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not onboard agent', true);
@@ -262,6 +278,29 @@ export function AgentsPage() {
               ))}
             </select>
           </Field>
+          <div className="row">
+            <Field label="ID type (optional)">
+              <select value={idType} onChange={(e) => setIdType(e.target.value)}>
+                <option value="">—</option>
+                {ID_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {ID_TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="ID number (optional — hashed before sending)">
+              <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
+            </Field>
+          </div>
+          <div className="row">
+            <Field label="Next of kin — name (optional)">
+              <Input value={nokName} onChange={(e) => setNokName(e.target.value)} />
+            </Field>
+            <Field label="Next of kin — phone (optional)">
+              <Input value={nokPhone} onChange={(e) => setNokPhone(e.target.value)} />
+            </Field>
+          </div>
         </Modal>
       )}
 
@@ -283,6 +322,10 @@ export function AgentsPage() {
           </KV>
           <KV label="Status">
             <Tag variant={STATUS_TAG[agent.status] ?? 'neutral'}>{agent.status}</Tag>
+          </KV>
+          <KV label="ID on file">{agent.id_type ? ID_TYPE_LABEL[agent.id_type] ?? agent.id_type : 'None recorded'}</KV>
+          <KV label="Next of kin">
+            {agent.next_of_kin_name ? `${agent.next_of_kin_name}${agent.next_of_kin_phone ? ' · ' + agent.next_of_kin_phone : ''}` : 'Not recorded'}
           </KV>
 
           {agent.consultant_id != null && (

@@ -6,11 +6,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { sha256Hex } from '../../lib/hash';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral', PENDING: 'warn' };
 const STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'EXITED'];
+const ID_TYPES = ['NIN', 'PASSPORT', 'DRIVERS_LICENSE', 'VOTERS_CARD'] as const;
+const ID_TYPE_LABEL: Record<string, string> = { NIN: 'NIN', PASSPORT: "International Passport", DRIVERS_LICENSE: "Driver's License", VOTERS_CARD: "Voter's Card" };
 
 // A <button> styled to read as an inline text link, not href="javascript:void(0)"
 // — React 19 actively blocks javascript: URLs as an XSS hardening measure
@@ -34,6 +37,10 @@ export function ConsultantsPage() {
   const [registrationWard, setRegistrationWard] = useState<number | ''>('');
   const [onboardStart, setOnboardStart] = useState('');
   const [onboardEnd, setOnboardEnd] = useState('');
+  const [signatoryName, setSignatoryName] = useState('');
+  const [signatoryIdType, setSignatoryIdType] = useState('');
+  const [signatoryIdNumber, setSignatoryIdNumber] = useState('');
+  const [registeredAddress, setRegisteredAddress] = useState('');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
   const [q, setQ] = useState('');
@@ -125,6 +132,10 @@ export function ConsultantsPage() {
           contract_start_date: onboardStart || undefined,
           contract_end_date: onboardEnd || undefined,
           ...(managerUsername.trim() ? { manager_username: managerUsername.trim(), manager_full_name: managerName.trim() } : {}),
+          authorized_signatory_name: signatoryName.trim() || undefined,
+          ...(signatoryIdType ? { authorized_signatory_id_type: signatoryIdType as components['schemas']['AuthorizedSignatoryIdTypeEnum'] } : {}),
+          ...(signatoryIdNumber.trim() ? { authorized_signatory_id_hash: await sha256Hex(signatoryIdNumber.trim()) } : {}),
+          registered_address: registeredAddress.trim() || undefined,
         },
       });
       if (error) throw new Error(errorMessage(error));
@@ -137,6 +148,10 @@ export function ConsultantsPage() {
       setRegistrationWard('');
       setOnboardStart('');
       setOnboardEnd('');
+      setSignatoryName('');
+      setSignatoryIdType('');
+      setSignatoryIdNumber('');
+      setRegisteredAddress('');
       await queryClient.invalidateQueries({ queryKey: ['consultants'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not onboard consultant', true);
@@ -285,6 +300,27 @@ export function ConsultantsPage() {
               <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} />
             </Field>
           )}
+          <Field label="Authorized signatory — name (optional)">
+            <Input value={signatoryName} onChange={(e) => setSignatoryName(e.target.value)} />
+          </Field>
+          <div className="row">
+            <Field label="Signatory ID type (optional)">
+              <select value={signatoryIdType} onChange={(e) => setSignatoryIdType(e.target.value)}>
+                <option value="">—</option>
+                {ID_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {ID_TYPE_LABEL[t]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Signatory ID number (optional — hashed before sending)">
+              <Input value={signatoryIdNumber} onChange={(e) => setSignatoryIdNumber(e.target.value)} />
+            </Field>
+          </div>
+          <Field label="Registered address (optional)">
+            <Input value={registeredAddress} onChange={(e) => setRegisteredAddress(e.target.value)} />
+          </Field>
         </Modal>
       )}
 
@@ -302,6 +338,11 @@ export function ConsultantsPage() {
           <KV label="Status">
             <Tag variant={STATUS_TAG[consultant.status] ?? 'neutral'}>{consultant.status}</Tag>
           </KV>
+          <KV label="Authorized signatory">{consultant.authorized_signatory_name || 'Not recorded'}</KV>
+          <KV label="Signatory ID on file">
+            {consultant.authorized_signatory_id_type ? ID_TYPE_LABEL[consultant.authorized_signatory_id_type] ?? consultant.authorized_signatory_id_type : 'None recorded'}
+          </KV>
+          <KV label="Registered address">{consultant.registered_address || 'Not recorded'}</KV>
           <KV label="Manager login">
             <Tag variant={consultant.has_login ? 'ok' : 'neutral'}>{consultant.has_login ? 'Set up' : 'Not set up'}</Tag>
           </KV>
