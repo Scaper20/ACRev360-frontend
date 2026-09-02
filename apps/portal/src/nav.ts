@@ -50,6 +50,7 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
           label: 'Administration',
           items: [
             { key: 'revenueItems', label: 'Revenue Items', to: '/revenue-items' },
+            { key: 'departments', label: 'Departments', to: '/departments' },
             { key: 'wards', label: 'Wards', to: '/wards' },
             { key: 'consultants', label: 'Sub-Consultants', to: '/consultants' },
             { key: 'agents', label: 'Field Agents', to: '/agents' },

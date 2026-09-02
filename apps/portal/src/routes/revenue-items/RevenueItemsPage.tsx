@@ -1,7 +1,7 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import { ClickableRow, Field, Input, Modal, NumCell, Tag, TableWrap, money, useToast } from '@acrev360/ui';
-import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useRevenueItems } from '../../lib/revenueItems';
 import { RateBandsEditor } from './RateBandsEditor';
@@ -12,10 +12,27 @@ export function RevenueItemsPage() {
   const { data, isLoading, error } = useRevenueItems();
   const [rateItemId, setRateItemId] = useState<number | null>(null);
   const [newRate, setNewRate] = useState('');
+  const [departmentId, setDepartmentId] = useState<number | ''>('');
   const toast = useToast();
   const queryClient = useQueryClient();
 
+  const { data: departments } = useQuery({
+    queryKey: ['departments'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/departments', { params: { query: { page: undefined } } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
+
   const item = data?.find((i) => i.id === rateItemId);
+
+  // Re-sync the department picker to whatever's actually on the item every
+  // time the detail modal opens for a (possibly different) one.
+  useEffect(() => {
+    setDepartmentId(item?.department ?? '');
+  }, [item?.id]);
 
   async function changeRate() {
     if (!rateItemId || !newRate) return;
@@ -28,6 +45,21 @@ export function RevenueItemsPage() {
       await queryClient.invalidateQueries({ queryKey: ['revenue-items'] });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not change rate', true);
+    }
+  }
+
+  async function saveDepartment() {
+    if (!rateItemId) return;
+    try {
+      const { error } = await apiClient.POST('/api/v1/revenue-items/{id}/department', {
+        params: { path: { id: String(rateItemId) } },
+        body: { department_id: departmentId === '' ? null : departmentId },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast('Department updated');
+      await queryClient.invalidateQueries({ queryKey: ['revenue-items'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not update department', true);
     }
   }
 
@@ -46,6 +78,7 @@ export function RevenueItemsPage() {
                   <th>Code</th>
                   <th>Item</th>
                   <th>Category</th>
+                  <th>Department</th>
                   <th className="r">Current Rate</th>
                   <th>Pricing</th>
                 </tr>
@@ -63,6 +96,7 @@ export function RevenueItemsPage() {
                       <NumCell>{i.harmonised_code}</NumCell>
                       <td>{i.item_name}</td>
                       <td>{i.category_name}</td>
+                      <td>{i.department_name || '—'}</td>
                       <NumCell className="r">{banded ? '—' : money(i.current_rate)}</NumCell>
                       <td>{pricing}</td>
                     </ClickableRow>
@@ -71,6 +105,7 @@ export function RevenueItemsPage() {
                       <NumCell>{i.harmonised_code}</NumCell>
                       <td>{i.item_name}</td>
                       <td>{i.category_name}</td>
+                      <td>{i.department_name || '—'}</td>
                       <NumCell className="r">{banded ? '—' : money(i.current_rate)}</NumCell>
                       <td>{pricing}</td>
                     </tr>
@@ -113,6 +148,23 @@ export function RevenueItemsPage() {
             existingBands={item.rate_bands}
             onSaved={() => queryClient.invalidateQueries({ queryKey: ['revenue-items'] })}
           />
+
+          <h3 style={{ margin: '18px 0 6px' }}>Department</h3>
+          <div className="row" style={{ alignItems: 'end' }}>
+            <Field label="Administered by">
+              <select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value) || '')}>
+                <option value="">— None —</option>
+                {departments?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.department_name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <button className="btn btn-ghost" onClick={saveDepartment} style={{ maxWidth: 140 }}>
+              Save Department
+            </button>
+          </div>
         </Modal>
       )}
     </>

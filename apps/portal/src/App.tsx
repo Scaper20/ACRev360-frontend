@@ -12,6 +12,7 @@ import { ReconciliationPage } from './routes/reconciliation/ReconciliationPage';
 import { SettlementsPage } from './routes/settlements/SettlementsPage';
 import { DebtPage } from './routes/debt/DebtPage';
 import { RevenueItemsPage } from './routes/revenue-items/RevenueItemsPage';
+import { DepartmentsPage } from './routes/departments/DepartmentsPage';
 import { WardsPage } from './routes/wards/WardsPage';
 import { ConsultantsPage } from './routes/consultants/ConsultantsPage';
 import { AgentsPage } from './routes/agents/AgentsPage';
@@ -46,6 +47,7 @@ export function App() {
           <Route path="/settlements" element={<SettlementsPage />} />
           <Route path="/debt" element={<DebtPage />} />
           <Route path="/revenue-items" element={<RevenueItemsPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/wards" element={<WardsPage />} />
           <Route path="/consultants" element={<ConsultantsPage />} />
           <Route path="/agents" element={<AgentsPage />} />
