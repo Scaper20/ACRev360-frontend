@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, dateTime, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -41,6 +41,9 @@ export function ConsultantsPage() {
   const [signatoryIdType, setSignatoryIdType] = useState('');
   const [signatoryIdNumber, setSignatoryIdNumber] = useState('');
   const [registeredAddress, setRegisteredAddress] = useState('');
+  const [roName, setRoName] = useState('');
+  const [roUsername, setRoUsername] = useState('');
+  const [roPhone, setRoPhone] = useState('');
   const [addItemId, setAddItemId] = useState<number | ''>('');
   const [addWard, setAddWard] = useState<number | ''>('');
   const [q, setQ] = useState('');
@@ -67,6 +70,41 @@ export function ConsultantsPage() {
   const itemLookup = (id: number) => revenueItems?.find((i) => i.id === id);
   const { data: wards } = useWards();
   const wardName = wardNameLookup(wards);
+
+  const revenueOfficersQuery = useQuery({
+    queryKey: ['consultants', 'revenue-officers', detailId],
+    enabled: detailId != null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/consultants/{id}/revenue-officers', { params: { path: { id: String(detailId) } } });
+      if (error) throw new Error(errorMessage(error));
+      // Documented as PaginatedRevenueOfficerList, but confirmed live: an
+      // empty list comes back as a bare [], not {results: [], count: 0} —
+      // another schema-vs-runtime mismatch (see CHANGELOG.md's recurring
+      // themes). Handle both shapes rather than assume either one.
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+  });
+
+  async function onboardRevenueOfficer() {
+    if (detailId == null || !roName.trim() || !roUsername.trim()) {
+      toast("Enter the revenue officer's name and a username", true);
+      return;
+    }
+    try {
+      const { error } = await apiClient.POST('/api/v1/consultants/{id}/revenue-officers', {
+        params: { path: { id: String(detailId) } },
+        body: { full_name: roName.trim(), username: roUsername.trim(), phone: roPhone.trim() || undefined },
+      });
+      if (error) throw new Error(errorMessage(error));
+      toast('Revenue officer account created');
+      setRoName('');
+      setRoUsername('');
+      setRoPhone('');
+      await queryClient.invalidateQueries({ queryKey: ['consultants', 'revenue-officers', detailId] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not create revenue officer account', true);
+    }
+  }
 
   const portfolioQuery = useQuery({
     queryKey: ['consultants', 'portfolio', detailId],
@@ -427,6 +465,44 @@ export function ConsultantsPage() {
               <Field label="&nbsp;">
                 <button className="btn btn-ghost" type="button" onClick={addPortfolioItem} disabled={addItemId === ''}>
                   Add
+                </button>
+              </Field>
+            </div>
+          )}
+
+          <h3 style={{ margin: '18px 0 8px' }}>Revenue Officers ({revenueOfficersQuery.data?.length ?? 0})</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-60)', marginTop: -4, marginBottom: 10 }}>
+            Read-only accounts — same portfolio visibility as this consultant&rsquo;s own manager, no mutating access anywhere.
+          </p>
+          {revenueOfficersQuery.isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : revenueOfficersQuery.error ? (
+            <div className="notice notice-bad">{revenueOfficersQuery.error instanceof Error ? revenueOfficersQuery.error.message : 'Failed to load revenue officers'}</div>
+          ) : revenueOfficersQuery.data && revenueOfficersQuery.data.length > 0 ? (
+            revenueOfficersQuery.data.map((ro) => (
+              <KV key={ro.id} label={`${ro.full_name} · ${ro.username}${ro.phone ? ' · ' + ro.phone : ''}`}>
+                <Tag variant={ro.is_active ? 'ok' : 'neutral'}>{ro.is_active ? 'Active' : 'Inactive'}</Tag>
+                <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--ink-60)' }}>{dateTime(ro.date_joined)}</span>
+              </KV>
+            ))
+          ) : (
+            <div className="empty">No revenue officer accounts yet</div>
+          )}
+
+          {isAdmin && (
+            <div className="row" style={{ marginTop: 14 }}>
+              <Field label="Full name">
+                <Input value={roName} onChange={(e) => setRoName(e.target.value)} />
+              </Field>
+              <Field label="Username">
+                <Input value={roUsername} onChange={(e) => setRoUsername(e.target.value)} />
+              </Field>
+              <Field label="Phone (optional)">
+                <Input value={roPhone} onChange={(e) => setRoPhone(e.target.value)} />
+              </Field>
+              <Field label="&nbsp;">
+                <button className="btn btn-ghost" type="button" onClick={onboardRevenueOfficer}>
+                  Create
                 </button>
               </Field>
             </div>

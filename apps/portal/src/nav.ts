@@ -83,6 +83,32 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
         },
         { label: 'Team', items: [{ key: 'agents', label: 'Field Agents', to: '/agents' }, { key: 'terminals', label: 'POS Terminal Fleet', to: '/terminals' }] },
       ];
+    case 'REVENUE_OFFICER':
+      // Same portfolio visibility as the consultant's own manager (see
+      // SubConsultantViewSet.revenue_officers's docstring), but read-only —
+      // no "Team" section, since managing/onboarding agents is a mutating
+      // capability outside "visibility" and every such action 403s for this
+      // role server-side regardless of what's shown here.
+      return [
+        { label: 'Overview', items: [{ key: 'dashboard', label: 'Dashboard', to: '/' }] },
+        {
+          label: 'Revenue Operations',
+          items: [
+            { key: 'payers', label: 'Payer Registry', to: '/payers' },
+            { key: 'bills', label: 'Assessment & e-Billing', to: '/bills' },
+            { key: 'payments', label: 'Payments', to: '/payments' },
+            { key: 'receipts', label: 'e-Receipts', to: '/receipts' },
+          ],
+        },
+        {
+          label: 'Finance',
+          items: [
+            { key: 'reconciliation', label: 'Reconciliation', to: '/reconciliation' },
+            { key: 'settlements', label: 'Commission Settlements', to: '/settlements' },
+            { key: 'debt', label: 'Debt Management', to: '/debt' },
+          ],
+        },
+      ];
     case 'GLOBAL_VIEW':
       // Read-only, aggregate-only by design (see StakeholderViewSet's
       // docstring on the backend) — no Sub-Consultants link, since that list

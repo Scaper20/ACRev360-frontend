@@ -36,6 +36,8 @@ export async function me(): Promise<Me> {
   return data;
 }
 
-/** access_level as returned by /auth/me — mirrors the backend's four roles
- * (see V2_ARCHITECTURE.md §8). Field agents don't use this frontend. */
-export type AccessLevel = 'COUNCIL_ADMIN' | 'CONSULTANT' | 'AGENT' | 'GLOBAL_VIEW';
+/** access_level as returned by /auth/me — mirrors the backend's roles
+ * (see V2_ARCHITECTURE.md §8, plus REVENUE_OFFICER added later: a read-only,
+ * single-consultant-scoped account — see SubConsultantViewSet.revenue_officers).
+ * Field agents don't use this frontend. */
+export type AccessLevel = 'COUNCIL_ADMIN' | 'CONSULTANT' | 'AGENT' | 'GLOBAL_VIEW' | 'REVENUE_OFFICER';
