@@ -42,12 +42,23 @@ export function ReportsPage() {
   );
 }
 
+interface PayerFilters {
+  q: string;
+  wardId: number | '';
+  consultantId: number | '';
+  dateFrom: string;
+  dateTo: string;
+}
+
+const EMPTY_PAYER_FILTERS: PayerFilters = { q: '', wardId: '', consultantId: '', dateFrom: '', dateTo: '' };
+
 function PayersReport() {
-  const [q, setQ] = useState('');
-  const [wardId, setWardId] = useState<number | ''>('');
-  const [consultantId, setConsultantId] = useState<number | ''>('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  // draft holds what's currently typed/selected; applied is what the query
+  // actually runs against. Nothing refetches until "Apply Filters" copies
+  // draft into applied — typing a search term or picking a ward no longer
+  // hits the backend on every keystroke/change.
+  const [draft, setDraft] = useState<PayerFilters>(EMPTY_PAYER_FILTERS);
+  const [applied, setApplied] = useState<PayerFilters>(EMPTY_PAYER_FILTERS);
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
 
@@ -55,16 +66,16 @@ function PayersReport() {
   const { data: consultants } = useConsultantOptions();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['reports', 'payers', q, wardId, consultantId, dateFrom, dateTo, ordering, page],
+    queryKey: ['reports', 'payers', applied, ordering, page],
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/payers', {
         params: {
           query: {
-            q: q || undefined,
-            ward_id: wardId === '' ? undefined : wardId,
-            consultant_id: consultantId === '' ? undefined : consultantId,
-            date_from: dateFrom || undefined,
-            date_to: dateTo || undefined,
+            q: applied.q || undefined,
+            ward_id: applied.wardId === '' ? undefined : applied.wardId,
+            consultant_id: applied.consultantId === '' ? undefined : applied.consultantId,
+            date_from: applied.dateFrom || undefined,
+            date_to: applied.dateTo || undefined,
             ordering,
             page,
           },
@@ -75,7 +86,8 @@ function PayersReport() {
     },
   });
 
-  function resetPage() {
+  function applyFilters() {
+    setApplied(draft);
     setPage(1);
   }
 
@@ -84,10 +96,15 @@ function PayersReport() {
       <div className="card">
         <div className="row">
           <Field label="Search">
-            <Input placeholder="Name, reference or phone…" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); }} />
+            <Input
+              placeholder="Name, reference or phone…"
+              value={draft.q}
+              onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+            />
           </Field>
           <Field label="Ward">
-            <select value={wardId} onChange={(e) => { setWardId(Number(e.target.value) || ''); resetPage(); }}>
+            <select value={draft.wardId} onChange={(e) => setDraft((d) => ({ ...d, wardId: Number(e.target.value) || '' }))}>
               <option value="">— All —</option>
               {wards?.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -97,7 +114,7 @@ function PayersReport() {
             </select>
           </Field>
           <Field label="Onboarded by">
-            <select value={consultantId} onChange={(e) => { setConsultantId(Number(e.target.value) || ''); resetPage(); }}>
+            <select value={draft.consultantId} onChange={(e) => setDraft((d) => ({ ...d, consultantId: Number(e.target.value) || '' }))}>
               <option value="">— All —</option>
               {consultants?.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -107,12 +124,12 @@ function PayersReport() {
             </select>
           </Field>
         </div>
-        <div className="row">
+        <div className="row" style={{ alignItems: 'end' }}>
           <Field label="Registered from">
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} />
+            <Input type="date" value={draft.dateFrom} onChange={(e) => setDraft((d) => ({ ...d, dateFrom: e.target.value }))} />
           </Field>
           <Field label="Registered to">
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} />
+            <Input type="date" value={draft.dateTo} onChange={(e) => setDraft((d) => ({ ...d, dateTo: e.target.value }))} />
           </Field>
           <Field label="Sort by">
             <select value={ordering} onChange={(e) => setOrdering(e.target.value)}>
@@ -123,6 +140,9 @@ function PayersReport() {
               <option value="payer_ref">Reference</option>
             </select>
           </Field>
+          <button className="btn btn-primary" type="button" onClick={applyFilters}>
+            Apply Filters
+          </button>
         </div>
       </div>
 
@@ -175,16 +195,34 @@ function PayersReport() {
   );
 }
 
+interface BillFilters {
+  q: string;
+  status: string;
+  wardId: number | '';
+  consultantId: number | '';
+  revenueItemId: number | '';
+  dateFrom: string;
+  dateTo: string;
+  valueMin: string;
+  valueMax: string;
+}
+
+const EMPTY_BILL_FILTERS: BillFilters = {
+  q: '',
+  status: '',
+  wardId: '',
+  consultantId: '',
+  revenueItemId: '',
+  dateFrom: '',
+  dateTo: '',
+  valueMin: '',
+  valueMax: '',
+};
+
 function BillsReport() {
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [wardId, setWardId] = useState<number | ''>('');
-  const [consultantId, setConsultantId] = useState<number | ''>('');
-  const [revenueItemId, setRevenueItemId] = useState<number | ''>('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [valueMin, setValueMin] = useState('');
-  const [valueMax, setValueMax] = useState('');
+  // Same draft/applied split as PayersReport — see its comment.
+  const [draft, setDraft] = useState<BillFilters>(EMPTY_BILL_FILTERS);
+  const [applied, setApplied] = useState<BillFilters>(EMPTY_BILL_FILTERS);
   const [ordering, setOrdering] = useState('-created_at');
   const [page, setPage] = useState(1);
   const toast = useToast();
@@ -194,23 +232,23 @@ function BillsReport() {
   const { data: revenueItems } = useRevenueItems();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['reports', 'bills', q, status, wardId, consultantId, revenueItemId, dateFrom, dateTo, valueMin, valueMax, ordering, page],
+    queryKey: ['reports', 'bills', applied, ordering, page],
     queryFn: async () => {
-      if (valueMin && valueMax && Number(valueMin) > Number(valueMax)) {
+      if (applied.valueMin && applied.valueMax && Number(applied.valueMin) > Number(applied.valueMax)) {
         toast('Minimum value is greater than maximum — showing no results', true);
       }
       const { data, error } = await apiClient.GET('/api/v1/bills', {
         params: {
           query: {
-            q: q || undefined,
-            status: (status || undefined) as components['schemas']['StatusE25Enum'] | undefined,
-            ward_id: wardId === '' ? undefined : wardId,
-            consultant_id: consultantId === '' ? undefined : consultantId,
-            revenue_item_id: revenueItemId === '' ? undefined : revenueItemId,
-            date_from: dateFrom || undefined,
-            date_to: dateTo || undefined,
-            value_min: valueMin ? Number(valueMin) : undefined,
-            value_max: valueMax ? Number(valueMax) : undefined,
+            q: applied.q || undefined,
+            status: (applied.status || undefined) as components['schemas']['StatusE25Enum'] | undefined,
+            ward_id: applied.wardId === '' ? undefined : applied.wardId,
+            consultant_id: applied.consultantId === '' ? undefined : applied.consultantId,
+            revenue_item_id: applied.revenueItemId === '' ? undefined : applied.revenueItemId,
+            date_from: applied.dateFrom || undefined,
+            date_to: applied.dateTo || undefined,
+            value_min: applied.valueMin ? Number(applied.valueMin) : undefined,
+            value_max: applied.valueMax ? Number(applied.valueMax) : undefined,
             ordering,
             page,
           },
@@ -221,7 +259,8 @@ function BillsReport() {
     },
   });
 
-  function resetPage() {
+  function applyFilters() {
+    setApplied(draft);
     setPage(1);
   }
 
@@ -230,10 +269,15 @@ function BillsReport() {
       <div className="card">
         <div className="row">
           <Field label="Search">
-            <Input placeholder="Bill reference or payer…" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); }} />
+            <Input
+              placeholder="Bill reference or payer…"
+              value={draft.q}
+              onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+            />
           </Field>
           <Field label="Status">
-            <select value={status} onChange={(e) => { setStatus(e.target.value); resetPage(); }}>
+            <select value={draft.status} onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))}>
               <option value="">— All —</option>
               {BILL_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -243,7 +287,7 @@ function BillsReport() {
             </select>
           </Field>
           <Field label="Ward">
-            <select value={wardId} onChange={(e) => { setWardId(Number(e.target.value) || ''); resetPage(); }}>
+            <select value={draft.wardId} onChange={(e) => setDraft((d) => ({ ...d, wardId: Number(e.target.value) || '' }))}>
               <option value="">— All —</option>
               {wards?.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -253,7 +297,7 @@ function BillsReport() {
             </select>
           </Field>
           <Field label="Onboarded by">
-            <select value={consultantId} onChange={(e) => { setConsultantId(Number(e.target.value) || ''); resetPage(); }}>
+            <select value={draft.consultantId} onChange={(e) => setDraft((d) => ({ ...d, consultantId: Number(e.target.value) || '' }))}>
               <option value="">— All —</option>
               {consultants?.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -265,7 +309,7 @@ function BillsReport() {
         </div>
         <div className="row">
           <Field label="Revenue item">
-            <select value={revenueItemId} onChange={(e) => { setRevenueItemId(Number(e.target.value) || ''); resetPage(); }}>
+            <select value={draft.revenueItemId} onChange={(e) => setDraft((d) => ({ ...d, revenueItemId: Number(e.target.value) || '' }))}>
               <option value="">— All —</option>
               {revenueItems?.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -275,18 +319,18 @@ function BillsReport() {
             </select>
           </Field>
           <Field label="Issued from">
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} />
+            <Input type="date" value={draft.dateFrom} onChange={(e) => setDraft((d) => ({ ...d, dateFrom: e.target.value }))} />
           </Field>
           <Field label="Issued to">
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} />
+            <Input type="date" value={draft.dateTo} onChange={(e) => setDraft((d) => ({ ...d, dateTo: e.target.value }))} />
           </Field>
         </div>
-        <div className="row">
+        <div className="row" style={{ alignItems: 'end' }}>
           <Field label="Min value (₦)">
-            <Input type="number" min={0} value={valueMin} onChange={(e) => { setValueMin(e.target.value); resetPage(); }} />
+            <Input type="number" min={0} value={draft.valueMin} onChange={(e) => setDraft((d) => ({ ...d, valueMin: e.target.value }))} />
           </Field>
           <Field label="Max value (₦)">
-            <Input type="number" min={0} value={valueMax} onChange={(e) => { setValueMax(e.target.value); resetPage(); }} />
+            <Input type="number" min={0} value={draft.valueMax} onChange={(e) => setDraft((d) => ({ ...d, valueMax: e.target.value }))} />
           </Field>
           <Field label="Sort by">
             <select value={ordering} onChange={(e) => setOrdering(e.target.value)}>
@@ -298,6 +342,9 @@ function BillsReport() {
               <option value="bill_ref">Reference</option>
             </select>
           </Field>
+          <button className="btn btn-primary" type="button" onClick={applyFilters}>
+            Apply Filters
+          </button>
         </div>
       </div>
 
