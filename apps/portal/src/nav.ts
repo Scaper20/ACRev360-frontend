@@ -58,6 +58,7 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
             { key: 'terminals', label: 'POS Terminal Fleet', to: '/terminals' },
             { key: 'channels', label: 'e-Channel Config', to: '/channels' },
             { key: 'audit', label: 'Audit Log', to: '/audit' },
+            { key: 'reports', label: 'Reports', to: '/reports' },
           ],
         },
       ];

@@ -20,6 +20,7 @@ import { StakeholdersPage } from './routes/stakeholders/StakeholdersPage';
 import { TerminalsPage } from './routes/terminals/TerminalsPage';
 import { ChannelsPage } from './routes/channels/ChannelsPage';
 import { AuditPage } from './routes/audit/AuditPage';
+import { ReportsPage } from './routes/reports/ReportsPage';
 import { OnboardCouncilPage } from './routes/platform/OnboardCouncilPage';
 import { DemandBillPrint } from './routes/print/DemandBillPrint';
 import { DemandNoticePrint } from './routes/print/DemandNoticePrint';
@@ -55,6 +56,7 @@ export function App() {
           <Route path="/terminals" element={<TerminalsPage />} />
           <Route path="/channels" element={<ChannelsPage />} />
           <Route path="/audit" element={<AuditPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
         </Route>
         {/* Platform-level, not business-role nav — see OnboardCouncilPage's own comment */}
         <Route path="/platform/onboard-council" element={<OnboardCouncilPage />} />
