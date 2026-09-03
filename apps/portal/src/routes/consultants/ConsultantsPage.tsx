@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, dateTime, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, dateTime, money, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -212,6 +212,23 @@ export function ConsultantsPage() {
 
   const consultant = data?.results.find((c) => c.id === detailId);
 
+  // Registration bill balance — status_change rejects PENDING -> ACTIVE
+  // server-side while this is above zero (see the backend's own error:
+  // "This consultant's registration bill still has a balance — it must be
+  // paid before activation."). Surfacing it here so an admin sees why
+  // before trying, not just after a failed attempt. Older consultants
+  // predating this flow have no registration_payer at all.
+  const registrationBillsQuery = useQuery({
+    queryKey: ['consultants', 'registration-bills', consultant?.registration_payer],
+    enabled: consultant?.registration_payer != null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/bills', { params: { query: { payer: consultant!.registration_payer! } } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
+  const registrationBalance = (registrationBillsQuery.data ?? []).reduce((sum, b) => sum + Number(b.balance), 0);
+
   // Re-sync the two date inputs to whatever's actually on the consultant
   // every time the detail modal opens for a (possibly different) one —
   // otherwise a stale value from the last consultant viewed would linger.
@@ -398,6 +415,13 @@ export function ConsultantsPage() {
               'Not set'
             )}
           </KV>
+          {consultant.registration_payer != null && registrationBalance > 0 && (
+            <KV label="Registration bill outstanding">
+              <span className="num" style={{ color: 'var(--danger)' }}>
+                {money(registrationBalance)} — cannot activate until paid
+              </span>
+            </KV>
+          )}
           {isAdmin && (
             <Field label="Change status">
               <Select value={consultant.status} onChange={(e) => changeStatus(consultant.id, e.target.value)}>
