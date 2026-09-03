@@ -1,54 +1,19 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import { Button, Field, Input, TableWrap, money2, useToast } from '@acrev360/ui';
+import type { components } from '@acrev360/api';
+import { Field, Input, NumCell, Pagination, TableWrap, dateTime, money, shortDate, useToast } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useRevenueItems } from '../../lib/revenueItems';
 import { useWards } from '../../lib/wards';
 
-const ENTITIES = ['PAYERS', 'BILLS', 'PAYMENTS', 'SETTLEMENTS'] as const;
-const GROUP_BY_OPTIONS = [
-  { value: 'ward', label: 'Ward' },
-  { value: 'revenue_item', label: 'Revenue item' },
-  { value: 'consultant', label: 'Consultant' },
-  { value: 'date', label: 'Date' },
-] as const;
+const REPORT_TYPES = ['PAYERS', 'BILLS'] as const;
 
-/** Snake_case column keys read better in Title Case than raw — this doesn't
- * know the actual key names ahead of time (rows are a genuinely dynamic
- * shape, keyed differently per entity/group_by combination), so it's a
- * generic transform, not a per-key label lookup. */
-function columnLabel(key: string): string {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
+const KYC_TAG: Record<string, string> = { VERIFIED: 'ok', FLAGGED: 'bad', PENDING: 'warn' };
+const BILL_STATUS_TAG: Record<string, string> = { PAID: 'ok', OVERDUE: 'bad', PART_PAID: 'warn', CANCELLED: 'neutral', SUPERSEDED: 'neutral' };
+const BILL_STATUSES = ['ISSUED', 'PART_PAID', 'PAID', 'OVERDUE', 'CANCELLED', 'SUPERSEDED'];
 
-// The backend serializes Decimal-shaped fields (billed/arrears/balance,
-// commission, etc.) as fixed-2dp strings, same as everywhere else in this
-// API — matching that exact shape here (rather than a per-key label lookup,
-// since the key names vary by entity/group_by) so money renders like money
-// instead of a raw "120000.00" string.
-const DECIMAL_STRING = /^-?\d+\.\d{2}$/;
-
-function cellValue(value: unknown): string {
-  if (value == null) return '—';
-  if (typeof value === 'number') return value.toLocaleString();
-  if (typeof value === 'string' && DECIMAL_STRING.test(value)) return money2(value);
-  return String(value);
-}
-
-export function ReportsPage() {
-  const toast = useToast();
-  const [entity, setEntity] = useState<(typeof ENTITIES)[number]>('PAYERS');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [groupBy, setGroupBy] = useState<string[]>([]);
-  const [consultantId, setConsultantId] = useState<number | ''>('');
-  const [wardId, setWardId] = useState<number | ''>('');
-  const [revenueItemId, setRevenueItemId] = useState<number | ''>('');
-  const [ran, setRan] = useState(false);
-
-  const { data: wards } = useWards();
-  const { data: revenueItems } = useRevenueItems();
-  const { data: consultants } = useQuery({
+function useConsultantOptions() {
+  return useQuery({
     queryKey: ['consultants'],
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
@@ -56,33 +21,52 @@ export function ReportsPage() {
       return data.results;
     },
   });
+}
 
-  const reportQuery = useQuery({
-    queryKey: ['reports', entity, dateFrom, dateTo, groupBy, consultantId, wardId, revenueItemId],
-    enabled: ran,
-    // A bad combination (e.g. a group_by dimension the chosen entity doesn't
-    // support) 400s and will never succeed on retry — the default 3 retries
-    // with backoff just delays the actual error message for several seconds
-    // while this query-builder tool is exactly the case where users will
-    // hit that regularly while exploring valid combinations.
-    retry: false,
+export function ReportsPage() {
+  const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('PAYERS');
+
+  return (
+    <>
+      <div className="toolbar">
+        <div className="row" style={{ gap: 8 }}>
+          {REPORT_TYPES.map((t) => (
+            <button key={t} className={`btn ${reportType === t ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setReportType(t)}>
+              {t === 'PAYERS' ? 'Payers Report' : 'Bills Report'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {reportType === 'PAYERS' ? <PayersReport /> : <BillsReport />}
+    </>
+  );
+}
+
+function PayersReport() {
+  const [q, setQ] = useState('');
+  const [wardId, setWardId] = useState<number | ''>('');
+  const [consultantId, setConsultantId] = useState<number | ''>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [ordering, setOrdering] = useState('-created_at');
+  const [page, setPage] = useState(1);
+
+  const { data: wards } = useWards();
+  const { data: consultants } = useConsultantOptions();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['reports', 'payers', q, wardId, consultantId, dateFrom, dateTo, ordering, page],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/reports', {
+      const { data, error } = await apiClient.GET('/api/v1/payers', {
         params: {
           query: {
-            entity,
+            q: q || undefined,
+            ward_id: wardId === '' ? undefined : wardId,
+            consultant_id: consultantId === '' ? undefined : consultantId,
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
-            // Documented as "Repeatable, max 2" and the backend reads it via
-            // getlist(), but the generated type is a bare `string` (the
-            // OpenAPI schema never declared it as an array) — openapi-fetch's
-            // default query serializer still repeats an array value as
-            // multiple keys regardless of what the type says, so the actual
-            // request is correct; only the type checker needs convincing.
-            group_by: (groupBy.length > 0 ? groupBy : undefined) as unknown as string | undefined,
-            consultant_id: consultantId === '' ? undefined : consultantId,
-            ward_id: wardId === '' ? undefined : wardId,
-            revenue_item_id: entity === 'BILLS' && revenueItemId !== '' ? revenueItemId : undefined,
+            ordering,
+            page,
           },
         },
       });
@@ -91,62 +75,19 @@ export function ReportsPage() {
     },
   });
 
-  function toggleGroupBy(value: string) {
-    setGroupBy((prev) => {
-      if (prev.includes(value)) return prev.filter((v) => v !== value);
-      if (prev.length >= 2) {
-        toast('Group by up to 2 dimensions at a time', true);
-        return prev;
-      }
-      return [...prev, value];
-    });
+  function resetPage() {
+    setPage(1);
   }
-
-  function runReport() {
-    setRan(true);
-    reportQuery.refetch();
-  }
-
-  const rows = reportQuery.data?.rows ?? [];
-  // Rows are a genuinely dynamic shape — union every key across every row
-  // rather than trust the first one, in case group_by combinations produce
-  // rows with slightly different keys present (e.g. a null dimension omitted).
-  const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))];
 
   return (
     <>
       <div className="card">
         <div className="row">
-          <Field label="Entity">
-            <select value={entity} onChange={(e) => setEntity(e.target.value as (typeof ENTITIES)[number])}>
-              {ENTITIES.map((e) => (
-                <option key={e} value={e}>
-                  {columnLabel(e.toLowerCase())}
-                </option>
-              ))}
-            </select>
+          <Field label="Search">
+            <Input placeholder="Name, reference or phone…" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); }} />
           </Field>
-          <Field label="From (optional)">
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </Field>
-          <Field label="To (optional)">
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </Field>
-        </div>
-
-        <div className="row">
-          <Field label="Consultant (optional)">
-            <select value={consultantId} onChange={(e) => setConsultantId(Number(e.target.value) || '')}>
-              <option value="">— All —</option>
-              {consultants?.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.consultant_name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Ward (optional)">
-            <select value={wardId} onChange={(e) => setWardId(Number(e.target.value) || '')}>
+          <Field label="Ward">
+            <select value={wardId} onChange={(e) => { setWardId(Number(e.target.value) || ''); resetPage(); }}>
               <option value="">— All —</option>
               {wards?.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -155,71 +96,258 @@ export function ReportsPage() {
               ))}
             </select>
           </Field>
-          {entity === 'BILLS' && (
-            <Field label="Revenue item (optional)">
-              <select value={revenueItemId} onChange={(e) => setRevenueItemId(Number(e.target.value) || '')}>
-                <option value="">— All —</option>
-                {revenueItems?.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.harmonised_code} — {i.item_name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+          <Field label="Onboarded by">
+            <select value={consultantId} onChange={(e) => { setConsultantId(Number(e.target.value) || ''); resetPage(); }}>
+              <option value="">— All —</option>
+              {consultants?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.consultant_name}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
-
-        <Field label="Group by (up to 2)">
-          <div className="row" style={{ gap: 16 }}>
-            {GROUP_BY_OPTIONS.map((g) => (
-              <label key={g.value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
-                <input type="checkbox" style={{ width: 'auto' }} checked={groupBy.includes(g.value)} onChange={() => toggleGroupBy(g.value)} />
-                {g.label}
-              </label>
-            ))}
-          </div>
-        </Field>
-
-        <div className="toolbar" style={{ paddingLeft: 0, paddingRight: 0 }}>
-          <div className="grow" />
-          <Button variant="primary" onClick={runReport}>
-            Run Report
-          </Button>
+        <div className="row">
+          <Field label="Registered from">
+            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Registered to">
+            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Sort by">
+            <select value={ordering} onChange={(e) => setOrdering(e.target.value)}>
+              <option value="-created_at">Newest first</option>
+              <option value="created_at">Oldest first</option>
+              <option value="full_name">Name (A–Z)</option>
+              <option value="-full_name">Name (Z–A)</option>
+              <option value="payer_ref">Reference</option>
+            </select>
+          </Field>
         </div>
       </div>
 
-      {ran && (
-        <div className="card">
-          <TableWrap>
-            {reportQuery.isFetching ? (
-              <div className="empty">Running report…</div>
-            ) : reportQuery.error ? (
-              <div className="notice notice-bad">{reportQuery.error instanceof Error ? reportQuery.error.message : 'Failed to run report'}</div>
-            ) : rows.length === 0 ? (
-              <div className="empty">No rows for this selection</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    {columns.map((c) => (
-                      <th key={c}>{columnLabel(c)}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i}>
-                      {columns.map((c) => (
-                        <td key={c}>{cellValue(row[c])}</td>
-                      ))}
+      <div className="card">
+        <TableWrap>
+          {isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : error ? (
+            <div className="notice notice-bad">{error instanceof Error ? error.message : 'Failed to load payers'}</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Type</th>
+                  <th>KYC</th>
+                  <th>Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data && data.results.length > 0 ? (
+                  data.results.map((p) => (
+                    <tr key={p.id}>
+                      <NumCell>{p.payer_ref}</NumCell>
+                      <td>{p.full_name}</td>
+                      <NumCell>{p.phone || '—'}</NumCell>
+                      <td>{p.payer_type}</td>
+                      <td>
+                        <span className={`tag tag-${KYC_TAG[p.kyc_status] ?? 'neutral'}`}>{p.kyc_status}</span>
+                      </td>
+                      <NumCell>{dateTime(p.created_at)}</NumCell>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </TableWrap>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="empty">
+                      No payers match this selection
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
+      </div>
+    </>
+  );
+}
+
+function BillsReport() {
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('');
+  const [wardId, setWardId] = useState<number | ''>('');
+  const [consultantId, setConsultantId] = useState<number | ''>('');
+  const [revenueItemId, setRevenueItemId] = useState<number | ''>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [valueMin, setValueMin] = useState('');
+  const [valueMax, setValueMax] = useState('');
+  const [ordering, setOrdering] = useState('-created_at');
+  const [page, setPage] = useState(1);
+  const toast = useToast();
+
+  const { data: wards } = useWards();
+  const { data: consultants } = useConsultantOptions();
+  const { data: revenueItems } = useRevenueItems();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['reports', 'bills', q, status, wardId, consultantId, revenueItemId, dateFrom, dateTo, valueMin, valueMax, ordering, page],
+    queryFn: async () => {
+      if (valueMin && valueMax && Number(valueMin) > Number(valueMax)) {
+        toast('Minimum value is greater than maximum — showing no results', true);
+      }
+      const { data, error } = await apiClient.GET('/api/v1/bills', {
+        params: {
+          query: {
+            q: q || undefined,
+            status: (status || undefined) as components['schemas']['StatusE25Enum'] | undefined,
+            ward_id: wardId === '' ? undefined : wardId,
+            consultant_id: consultantId === '' ? undefined : consultantId,
+            revenue_item_id: revenueItemId === '' ? undefined : revenueItemId,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
+            value_min: valueMin || undefined,
+            value_max: valueMax || undefined,
+            ordering,
+            page,
+          },
+        },
+      });
+      if (error) throw new Error(errorMessage(error));
+      return data;
+    },
+  });
+
+  function resetPage() {
+    setPage(1);
+  }
+
+  return (
+    <>
+      <div className="card">
+        <div className="row">
+          <Field label="Search">
+            <Input placeholder="Bill reference or payer…" value={q} onChange={(e) => { setQ(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Status">
+            <select value={status} onChange={(e) => { setStatus(e.target.value); resetPage(); }}>
+              <option value="">— All —</option>
+              {BILL_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Ward">
+            <select value={wardId} onChange={(e) => { setWardId(Number(e.target.value) || ''); resetPage(); }}>
+              <option value="">— All —</option>
+              {wards?.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.ward_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Onboarded by">
+            <select value={consultantId} onChange={(e) => { setConsultantId(Number(e.target.value) || ''); resetPage(); }}>
+              <option value="">— All —</option>
+              {consultants?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.consultant_name}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
-      )}
+        <div className="row">
+          <Field label="Revenue item">
+            <select value={revenueItemId} onChange={(e) => { setRevenueItemId(Number(e.target.value) || ''); resetPage(); }}>
+              <option value="">— All —</option>
+              {revenueItems?.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.harmonised_code} — {i.item_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Issued from">
+            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Issued to">
+            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} />
+          </Field>
+        </div>
+        <div className="row">
+          <Field label="Min value (₦)">
+            <Input type="number" min={0} value={valueMin} onChange={(e) => { setValueMin(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Max value (₦)">
+            <Input type="number" min={0} value={valueMax} onChange={(e) => { setValueMax(e.target.value); resetPage(); }} />
+          </Field>
+          <Field label="Sort by">
+            <select value={ordering} onChange={(e) => setOrdering(e.target.value)}>
+              <option value="-created_at">Newest first</option>
+              <option value="created_at">Oldest first</option>
+              <option value="-total_amount">Value (high–low)</option>
+              <option value="total_amount">Value (low–high)</option>
+              <option value="due_date">Due date</option>
+              <option value="bill_ref">Reference</option>
+            </select>
+          </Field>
+        </div>
+      </div>
+
+      <div className="card">
+        <TableWrap>
+          {isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : error ? (
+            <div className="notice notice-bad">{error instanceof Error ? error.message : 'Failed to load bills'}</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill Ref</th>
+                  <th>Payer</th>
+                  <th>Consultant</th>
+                  <th className="r">Total</th>
+                  <th className="r">Balance</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data && data.results.length > 0 ? (
+                  data.results.map((b) => (
+                    <tr key={b.id}>
+                      <NumCell>{b.bill_ref}</NumCell>
+                      <td>{b.full_name}</td>
+                      <td>{b.consultant_name ?? 'Council Direct'}</td>
+                      <NumCell className="r">{money(b.total_amount)}</NumCell>
+                      <NumCell className="r">{money(b.balance)}</NumCell>
+                      <NumCell>{shortDate(b.due_date)}</NumCell>
+                      <td>
+                        <span className={`tag tag-${BILL_STATUS_TAG[b.status] ?? 'brass'}`}>{b.status.replace('_', ' ')}</span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="empty">
+                      No bills match this selection
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </TableWrap>
+        {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
+      </div>
     </>
   );
 }

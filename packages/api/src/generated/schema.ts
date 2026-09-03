@@ -3275,14 +3275,30 @@ export interface operations {
     v1_bills_list: {
         parameters: {
             query?: {
+                /** @description Filter by the consultant whose user enumerated the bill's payer. Narrows within the caller's own scope — it never widens it for a CONSULTANT/REVENUE_OFFICER. */
+                consultant_id?: number;
+                /** @description Issued on/after this date (inclusive) */
+                date_from?: string;
+                /** @description Issued on/before this date (inclusive) */
+                date_to?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Filter to one payer's bills */
                 payer?: number;
                 /** @description Search by bill reference or payer name */
                 q?: string;
+                /** @description Bills carrying a line for this revenue item */
+                revenue_item_id?: number;
                 /** @description Filter by bill status */
                 status?: string;
+                /** @description Maximum total_amount (inclusive) */
+                value_max?: number;
+                /** @description Minimum total_amount (inclusive) */
+                value_min?: number;
+                /** @description Filter by the bill's payer's ward */
+                ward_id?: number;
             };
             header?: never;
             path?: never;
@@ -4105,10 +4121,20 @@ export interface operations {
     v1_payers_list: {
         parameters: {
             query?: {
+                /** @description Filter by the consultant whose user enumerated the payer. Narrows within the caller's own scope — it never widens it for a CONSULTANT/REVENUE_OFFICER. */
+                consultant_id?: number;
+                /** @description Registered on/after this date (inclusive) */
+                date_from?: string;
+                /** @description Registered on/before this date (inclusive) */
+                date_to?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Search by name, reference or phone */
                 q?: string;
+                /** @description Filter by the payer's ward */
+                ward_id?: number;
             };
             header?: never;
             path?: never;
@@ -4202,7 +4228,10 @@ export interface operations {
     };
     v1_payers_draft_assessments_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
             header?: never;
             path: {
                 id: string;
