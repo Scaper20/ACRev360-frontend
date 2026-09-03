@@ -111,16 +111,28 @@ export function DemandNoticePrint() {
               );
             })}
             {arrears > 0 &&
-              bill.superseded_bills.map((s, i) => (
-                <tr key={s.bill_ref}>
-                  <td className="sn">{bill.lines.length + i + 1}</td>
-                  <td>Arrears — Brought Forward from {s.bill_ref}</td>
-                  <td className="num">—</td>
-                  <td className="num">{money2(s.amount)}</td>
-                  <td className="num">{money2(0)}</td>
-                  <td className="num">{money2(s.amount)}</td>
-                </tr>
-              ))}
+              (() => {
+                let sn = bill.lines.length;
+                return bill.superseded_bills.flatMap((s) =>
+                  s.lines.map((l) => {
+                    sn += 1;
+                    const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
+                    return (
+                      <tr key={`${s.bill_ref}-${l.id}`}>
+                        <td className="sn">{sn}</td>
+                        <td>
+                          {l.item_name}
+                          {bandNote} — arrears from {s.bill_ref}
+                        </td>
+                        <td className="num">{l.harmonised_code}</td>
+                        <td className="num">{money2(l.line_amount)}</td>
+                        <td className="num">{money2(0)}</td>
+                        <td className="num">{money2(l.line_amount)}</td>
+                      </tr>
+                    );
+                  }),
+                );
+              })()}
           </tbody>
           <tfoot>
             {amountPaid > 0 && (
