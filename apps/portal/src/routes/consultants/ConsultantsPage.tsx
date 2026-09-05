@@ -7,13 +7,12 @@ import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { sha256Hex } from '../../lib/hash';
+import { ID_TYPES, ID_TYPE_LABEL } from '../../lib/idTypes';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral', PENDING: 'warn' };
 const STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'EXITED'];
-const ID_TYPES = ['NIN', 'PASSPORT', 'DRIVERS_LICENSE', 'VOTERS_CARD'] as const;
-const ID_TYPE_LABEL: Record<string, string> = { NIN: 'NIN', PASSPORT: "International Passport", DRIVERS_LICENSE: "Driver's License", VOTERS_CARD: "Voter's Card" };
 
 // A <button> styled to read as an inline text link, not href="javascript:void(0)"
 // — React 19 actively blocks javascript: URLs as an XSS hardening measure
@@ -415,7 +414,12 @@ export function ConsultantsPage() {
               'Not set'
             )}
           </KV>
-          {consultant.registration_payer != null && registrationBalance > 0 && (
+          {consultant.registration_payer != null && registrationBillsQuery.error && (
+            <KV label="Registration bill outstanding">
+              <span style={{ color: 'var(--danger)' }}>Could not check — try reopening before activating</span>
+            </KV>
+          )}
+          {consultant.registration_payer != null && !registrationBillsQuery.error && registrationBalance > 0 && (
             <KV label="Registration bill outstanding">
               <span className="num" style={{ color: 'var(--danger)' }}>
                 {money(registrationBalance)} — cannot activate until paid

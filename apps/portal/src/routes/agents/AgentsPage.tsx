@@ -6,12 +6,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { sha256Hex } from '../../lib/hash';
+import { ID_TYPES, ID_TYPE_LABEL } from '../../lib/idTypes';
 import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral' };
-const ID_TYPES = ['NIN', 'PASSPORT', 'DRIVERS_LICENSE', 'VOTERS_CARD'] as const;
-const ID_TYPE_LABEL: Record<string, string> = { NIN: 'NIN', PASSPORT: "International Passport", DRIVERS_LICENSE: "Driver's License", VOTERS_CARD: "Voter's Card" };
 
 export function AgentsPage() {
   const { user } = useAuth();

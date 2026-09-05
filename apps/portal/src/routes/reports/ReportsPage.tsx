@@ -3,6 +3,7 @@ import type { components } from '@acrev360/api';
 import { Field, Input, NumCell, Pagination, TableWrap, dateTime, money, shortDate, useToast } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 import { useRevenueItems } from '../../lib/revenueItems';
 import { useWards } from '../../lib/wards';
 
@@ -13,8 +14,14 @@ const BILL_STATUS_TAG: Record<string, string> = { PAID: 'ok', OVERDUE: 'bad', PA
 const BILL_STATUSES = ['ISSUED', 'PART_PAID', 'PAID', 'OVERDUE', 'CANCELLED', 'SUPERSEDED'];
 
 function useConsultantOptions() {
+  const { user } = useAuth();
+  // /api/v1/consultants is COUNCIL_ADMIN-only server-side (same reasoning as
+  // AgentsPage's own copy of this query) — Reports has no route-level role
+  // check of its own and is reachable by direct URL, so skip the guaranteed
+  // 403 for anyone who isn't admin rather than firing it unconditionally.
   return useQuery({
     queryKey: ['consultants'],
+    enabled: user?.access_level === 'COUNCIL_ADMIN',
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
       if (error) throw new Error(errorMessage(error));
@@ -67,6 +74,11 @@ function PayersReport() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports', 'payers', applied, ordering, page],
+    // A bad ordering value or filter combination 400s and never succeeds on
+    // retry — see BillsReport's identical setting for the incident this
+    // fixes (default retry/backoff delayed a real error long enough to look
+    // like "no rows" instead).
+    retry: false,
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/payers', {
         params: {
@@ -233,10 +245,10 @@ function BillsReport() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports', 'bills', applied, ordering, page],
+    // See PayersReport's identical setting — a rejected filter combination
+    // never succeeds on retry.
+    retry: false,
     queryFn: async () => {
-      if (applied.valueMin && applied.valueMax && Number(applied.valueMin) > Number(applied.valueMax)) {
-        toast('Minimum value is greater than maximum — showing no results', true);
-      }
       const { data, error } = await apiClient.GET('/api/v1/bills', {
         params: {
           query: {
@@ -260,6 +272,20 @@ function BillsReport() {
   });
 
   function applyFilters() {
+    // Validated here, before committing to `applied`, so an invalid
+    // combination never reaches the request at all — a toast fired from
+    // inside queryFn couldn't actually block anything and re-fired on every
+    // background refetch besides.
+    const min = draft.valueMin ? Number(draft.valueMin) : null;
+    const max = draft.valueMax ? Number(draft.valueMax) : null;
+    if ((min != null && Number.isNaN(min)) || (max != null && Number.isNaN(max))) {
+      toast('Min/max value must be a number', true);
+      return;
+    }
+    if (min != null && max != null && min > max) {
+      toast('Minimum value is greater than maximum', true);
+      return;
+    }
     setApplied(draft);
     setPage(1);
   }

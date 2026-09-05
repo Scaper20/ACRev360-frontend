@@ -17,6 +17,7 @@ const PAGE_META: Record<string, [string, string]> = {
   '/settlements': ['Commission Settlements', 'Sub-consultant commission computation and status'],
   '/debt': ['Debt Management', 'Overdue bills and the enforcement ladder'],
   '/revenue-items': ['Revenue Items', 'The harmonised chart of revenue and its rates'],
+  '/departments': ['Departments', 'Council departments administering revenue items'],
   '/wards': ['Wards', 'Wards, zones and districts used across the council'],
   '/consultants': ['Sub-Consultants', 'Portfolio holders onboarded to the platform'],
   '/agents': ['Field Agents', 'Collection agents deployed to wards'],
@@ -24,6 +25,7 @@ const PAGE_META: Record<string, [string, string]> = {
   '/terminals': ['POS Terminal Fleet', 'Deployed terminals and lifetime collections'],
   '/channels': ['e-Channel Config', 'Payment channel catalogue and API credentials'],
   '/audit': ['Audit Log', 'Immutable trail of sensitive actions'],
+  '/reports': ['Reports', 'Filterable, sortable record listings for payers and bills'],
 };
 
 export function ProtectedLayout() {
