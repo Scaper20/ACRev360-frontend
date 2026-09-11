@@ -13,6 +13,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.btn:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+}
 .btn-primary {
   background: var(--green-700);
   color: #fff;
@@ -40,6 +44,10 @@
   background: var(--green-100);
 }
 .btn-sm {
+  /* min-height keeps this at the WCAG 24px web target-size floor even
+     though the padding+font-size math alone lands a couple px short —
+     padding stays visually compact, height doesn't. */
+  min-height: 24px;
   padding: 5px 10px;
   font-size: 12px;
 }

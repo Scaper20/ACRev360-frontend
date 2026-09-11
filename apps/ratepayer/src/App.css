@@ -1,0 +1,54 @@
+.rp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.rp-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rp-header-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rp-header-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rp-header-fullname {
+  font-size: 13px;
+  color: var(--ink-60);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+/* Below ~420px, "My ACRev360 Account" + a full name + Sign out no longer
+   fits on one line even with wrapping enabled above — drop the app title
+   first (the AC mark alone still identifies the app) and let the user's
+   own name take priority, since that's the more useful thing to see at a
+   glance once space is this tight. */
+@media (max-width: 420px) {
+  .rp-header-name {
+    display: none;
+  }
+  .rp-header-fullname {
+    max-width: 50vw;
+  }
+}

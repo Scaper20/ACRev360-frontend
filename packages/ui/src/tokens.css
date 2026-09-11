@@ -15,7 +15,12 @@
   --green-600: #1c6b51;
   --green-100: #e7efe3;
 
-  /* Brass — secondary accent: sidebar labels, active nav, one stat accent */
+  /* Brass — secondary accent: sidebar labels, active nav, one stat accent.
+     Only ever safe as TEXT on a dark ground (e.g. --green-900 sidebar,
+     5.25:1) — on --canvas/--surface it measures 2.6-3.0:1, below the WCAG
+     floor even for large text. Fine as a border/background accent on light
+     surfaces (--brass-lt exists for that); don't reach for --brass itself
+     as text color on a light card. */
   --brass: #c08b2c;
   --brass-lt: #efe0bc;
 
