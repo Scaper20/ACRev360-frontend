@@ -1,0 +1,48 @@
+.rp-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  background: var(--green-800);
+  padding: 20px;
+}
+
+.rp-login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.rp-login-mark {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: var(--radius-sm);
+  background: var(--green-800);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.rp-login-card h1 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+
+.rp-login-card p {
+  color: var(--ink-40);
+  font-size: 13px;
+  margin: 0 0 20px;
+}
+
+.rp-login-card form {
+  text-align: left;
+}

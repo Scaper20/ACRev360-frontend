@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/portal",
     "dev:field": "npm run dev --workspace=apps/field",
-    "build": "npm run build --workspace=apps/portal && npm run build --workspace=apps/field",
+    "dev:ratepayer": "npm run dev --workspace=apps/ratepayer",
+    "build": "npm run build --workspace=apps/portal && npm run build --workspace=apps/field && npm run build --workspace=apps/ratepayer",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

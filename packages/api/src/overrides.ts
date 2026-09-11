@@ -81,3 +81,26 @@ export type GlobalExceptionList = components['schemas']['GlobalException'][];
  * two full rebuild+regenerate cycles each on the backend).
  */
 export type UpdateProfileResponse = components['schemas']['Me'];
+
+/**
+ * 9-11. GET /api/v1/my/{bills,payments,receipts} are all documented as
+ * their respective paginated envelopes but confirmed live to return bare
+ * arrays — same class of mismatch as #7 above (RatepayerPortalViewSet's
+ * actions resolve their own rows directly through accessible_payer_ids
+ * rather than going through a ModelViewSet's list() pagination).
+ */
+export type MyBillList = components['schemas']['Bill'][];
+export type MyPaymentList = components['schemas']['Payment'][];
+export type MyReceiptList = components['schemas']['Receipt'][];
+
+/**
+ * 12. GET /api/v1/my/delegations is documented as PaginatedPayerDelegationList
+ * but returns a bare array (same reasoning as #9-11 above — RATEPAYER
+ * self-service isn't a ModelViewSet). POST to the same endpoint is
+ * documented as returning the same paginated envelope but actually returns
+ * a single PayerDelegation object (the newly-created row) — confirmed live
+ * (201, one object, not a list). POST /api/v1/my/{id}/revoke's documented
+ * PayerDelegation response is correct as-is; no override needed there.
+ */
+export type MyDelegationList = components['schemas']['PayerDelegation'][];
+export type CreateDelegationResponse = components['schemas']['PayerDelegation'];

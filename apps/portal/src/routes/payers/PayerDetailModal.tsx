@@ -15,12 +15,21 @@ const BILL_TAG_FOR: Record<string, TagVariant> = { PAID: 'ok', OVERDUE: 'bad', P
 export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClose: () => void }) {
   const { user } = useAuth();
   const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
+  // Per FRONTEND_HANDOFF_RBAC: invite-ratepayer is available to
+  // COUNCIL_ADMIN, COUNCIL_IT, and AGENT — confirmed live that COUNCIL_IT
+  // passes this endpoint's permission check (409 on an already-invited
+  // payer, not 403).
+  const canInviteRatepayer = isAdmin || user?.access_level === 'COUNCIL_IT' || user?.access_level === 'AGENT';
   const { data: wards } = useWards();
   const wardName = wardNameLookup(wards);
   const toast = useToast();
   const queryClient = useQueryClient();
   const [rollArrears, setRollArrears] = useState(false);
   const [duplicate, setDuplicate] = useState<components['schemas']['Bill'] | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [rpUsername, setRpUsername] = useState('');
+  const [rpPassword, setRpPassword] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   const payerQuery = useQuery({
     queryKey: ['payers', 'detail', payerId],
@@ -88,6 +97,33 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
     }
   }
 
+  async function inviteRatepayer() {
+    if (!rpUsername.trim() || !rpPassword.trim()) {
+      toast('Enter a username and password for the ratepayer login', true);
+      return;
+    }
+    setInviting(true);
+    try {
+      const { error } = await apiClient.POST('/api/v1/payers/{id}/invite-ratepayer', {
+        params: { path: { id: String(payerId) } },
+        body: { username: rpUsername.trim(), password: rpPassword.trim() },
+      });
+      if (error) {
+        // 409 when this payer already has a ratepayer login — confirmed
+        // live, a clean single-field error message.
+        throw new Error(errorMessage(error));
+      }
+      toast(`Ratepayer login created — ${rpUsername.trim()}`);
+      setInviteOpen(false);
+      setRpUsername('');
+      setRpPassword('');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not create ratepayer login', true);
+    } finally {
+      setInviting(false);
+    }
+  }
+
   async function deletePayer() {
     if (p == null) return;
     if (!window.confirm(`Delete ${p.full_name} (${p.payer_ref})? This can't be undone.`)) return;
@@ -115,12 +151,18 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
   const bills = billsQuery.data ?? [];
 
   return (
+    <>
     <Modal
       open
       onClose={onClose}
       title={p?.full_name ?? 'Payer'}
       footer={
         <>
+          {canInviteRatepayer && p != null && (
+            <button className="btn btn-ghost" onClick={() => setInviteOpen(true)}>
+              Invite Ratepayer
+            </button>
+          )}
           {isAdmin && p != null && (
             <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={deletePayer}>
               Delete
@@ -227,5 +269,34 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
         </>
       )}
     </Modal>
+    {inviteOpen && p != null && (
+      <Modal
+        open
+        onClose={() => setInviteOpen(false)}
+        title={`Invite ${p.full_name} to the ratepayer portal`}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setInviteOpen(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={inviteRatepayer} disabled={inviting}>
+              {inviting ? 'Creating…' : 'Create Login'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13, color: 'var(--ink-40)', marginTop: -4, marginBottom: 14 }}>
+          Gives {p.full_name} their own sign-in to view bills, payments and receipts — separate from this staff portal. Share these
+          credentials with them directly; they can change the password once signed in.
+        </p>
+        <Field label="Username">
+          <input value={rpUsername} onChange={(e) => setRpUsername(e.target.value)} />
+        </Field>
+        <Field label="Password">
+          <input type="text" value={rpPassword} onChange={(e) => setRpPassword(e.target.value)} />
+        </Field>
+      </Modal>
+    )}
+    </>
   );
 }
