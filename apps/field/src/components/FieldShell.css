@@ -41,6 +41,11 @@ button.field-header-who:active {
   background: rgba(255, 255, 255, 0.12);
 }
 
+button.field-header-who:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
 .field-header-who b {
   display: block;
   font-size: 14px;
@@ -104,6 +109,11 @@ button.field-header-who:active {
   cursor: pointer;
 }
 
+.field-queue-bar:focus-visible {
+  outline: 2px solid var(--warn);
+  outline-offset: -2px;
+}
+
 .field-page {
   flex: 1;
   overflow-y: auto;
@@ -138,6 +148,11 @@ button.field-header-who:active {
   color: var(--green-700);
 }
 
+.field-bottom-nav button:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: -3px;
+}
+
 .field-nav-icon {
   font-size: 18px;
   line-height: 1;
@@ -168,6 +183,11 @@ button.field-header-who:active {
 
 .field-payer-card:active {
   background: var(--surface-2);
+}
+
+.field-payer-card:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
 }
 
 .field-payer-avatar {
@@ -233,6 +253,12 @@ button.field-header-who:active {
   background: var(--green-600);
   color: #fff;
   border-color: var(--green-600);
+}
+
+.field-type-toggle button:focus-visible,
+.field-channel-grid button:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
 }
 
 .field-channel-grid {
