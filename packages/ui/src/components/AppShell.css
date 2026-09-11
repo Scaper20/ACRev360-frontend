@@ -60,7 +60,10 @@
   color: var(--brass);
   font-weight: 700;
   padding: 14px 10px 7px;
-  opacity: 0.85;
+  /* No opacity dimming: at this size (10px, below even the bold large-text
+     threshold), --brass on --green-900 needs its full 5.25:1 contrast — the
+     previous opacity: 0.85 pulled it down to 4.13:1, under the WCAG 4.5:1
+     floor for normal text. */
 }
 .nav a {
   display: flex;
@@ -84,6 +87,10 @@
   color: var(--green-900);
   font-weight: 700;
 }
+.nav a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
 .sidebar-foot {
   padding: 14px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -103,6 +110,10 @@
   border-radius: var(--radius-sm);
   padding: 0;
   flex-shrink: 0;
+}
+.menu-btn:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
 }
 .sidebar-backdrop {
   display: none;
@@ -201,6 +212,10 @@ button.who {
 }
 button.who:hover {
   background: var(--surface-2);
+}
+button.who:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
 }
 .who .avatar {
   width: 32px;
