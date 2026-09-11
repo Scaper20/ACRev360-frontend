@@ -25,6 +25,12 @@ const LINK_BUTTON_STYLE: CSSProperties = { background: 'none', border: 'none', p
 export function ConsultantsPage() {
   const { user } = useAuth();
   const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
+  // COUNCIL_IT can create revenue-officer logins (per FRONTEND_HANDOFF_RBAC:
+  // "can create agent/officer/stakeholder/ratepayer logins") but has none of
+  // this page's other admin rights (onboarding, status change, contract
+  // dates, portfolio management) — kept as its own flag rather than folded
+  // into isAdmin so it only widens that one form.
+  const canCreateRevenueOfficer = isAdmin || user?.access_level === 'COUNCIL_IT';
   const toast = useToast();
   const queryClient = useQueryClient();
   const [onboardOpen, setOnboardOpen] = useState(false);
@@ -281,14 +287,14 @@ export function ConsultantsPage() {
 
   return (
     <>
-      {isAdmin && (
-        <div className="toolbar">
-          <input className="grow" autoComplete="off" placeholder="Search by name or contract reference…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
+      <div className="toolbar">
+        <input className="grow" autoComplete="off" placeholder="Search by name or contract reference…" value={q} onChange={(e) => onSearchChange(e.target.value)} />
+        {isAdmin && (
           <Button variant="primary" onClick={() => setOnboardOpen(true)}>
             Onboard Consultant
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       <div className="card">
         <TableWrap>
           {isLoading ? (
@@ -545,7 +551,7 @@ export function ConsultantsPage() {
             <div className="empty">No revenue officer accounts yet</div>
           )}
 
-          {isAdmin && (
+          {canCreateRevenueOfficer && (
             <div className="row" style={{ marginTop: 14 }}>
               <Field label="Full name">
                 <Input value={roName} onChange={(e) => setRoName(e.target.value)} />

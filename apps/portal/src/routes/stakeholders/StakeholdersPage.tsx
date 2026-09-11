@@ -6,7 +6,10 @@ import { useAuth } from '../../auth/AuthContext';
 
 export function StakeholdersPage() {
   const { user } = useAuth();
-  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
+  // COUNCIL_IT can create stakeholder logins per FRONTEND_HANDOFF_RBAC
+  // ("can create agent/officer/stakeholder/ratepayer logins") — this page's
+  // only isAdmin usage is exactly that action, so no need to split it.
+  const isAdmin = user?.access_level === 'COUNCIL_ADMIN' || user?.access_level === 'COUNCIL_IT';
   const toast = useToast();
   const queryClient = useQueryClient();
   const [onboardOpen, setOnboardOpen] = useState(false);

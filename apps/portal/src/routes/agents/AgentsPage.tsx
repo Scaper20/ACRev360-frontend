@@ -14,6 +14,17 @@ const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad',
 
 export function AgentsPage() {
   const { user } = useAuth();
+  // COUNCIL_IT is deliberately NOT included here even though it can create
+  // agent logins (POST /api/v1/agents passes for it) — GET /api/v1/agents
+  // 403s for COUNCIL_IT live, so this whole page 500s/error-states for that
+  // role today regardless of what the form logic below allows. Not linked
+  // from nav.ts for COUNCIL_IT either, for the same reason (see its case
+  // there for the full note). Once the backend adds list/retrieve read
+  // access to FieldAgentViewSet for COUNCIL_IT, widen isAdmin here to
+  // include it too (COUNCIL_IT isn't a consultant, so it needs this same
+  // explicit-consultant-picker branch, not CONSULTANT's self-assign one) —
+  // just not canManagePortfolio below, which should stay narrower since
+  // revenue-item assignment is outside IT's "create logins only" grant.
   const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -50,10 +61,13 @@ export function AgentsPage() {
 
   const { data: consultants } = useQuery({
     queryKey: ['consultants'],
-    // A CONSULTANT-role caller can't list this endpoint at all (COUNCIL_ADMIN
-    // only, see SubConsultantViewSet.get_permissions()) — skip the guaranteed
-    // 403 and fall back to the caller's own identity below instead.
-    enabled: isAdmin,
+    // A CONSULTANT-role caller can't list this endpoint at all — skip the
+    // guaranteed 403 and fall back to the caller's own identity below
+    // instead. COUNCIL_IGR_HEAD and COUNCIL_AUDITOR both reach this page
+    // (see nav.ts) and need consultant names resolved for display, even
+    // though they can't onboard agents — confirmed live they can list
+    // consultants same as COUNCIL_ADMIN.
+    enabled: isAdmin || user?.access_level === 'COUNCIL_IGR_HEAD' || user?.access_level === 'COUNCIL_AUDITOR',
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
       if (error) throw new Error(errorMessage(error));

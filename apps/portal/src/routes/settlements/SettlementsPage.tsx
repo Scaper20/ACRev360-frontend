@@ -83,7 +83,11 @@ function MySettlementsPage() {
 
 function AdminSettlementsList() {
   const { user } = useAuth();
-  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
+  // Only ever reached by non-COUNCIL_ADMIN, non-CONSULTANT roles (see the
+  // routing above) — COUNCIL_TREASURY has full settlements access per
+  // FRONTEND_HANDOFF_RBAC and lands here since it has no consultant
+  // management to redirect to.
+  const isAdmin = user?.access_level === 'COUNCIL_TREASURY';
   const toast = useToast();
   const queryClient = useQueryClient();
   const [computeOpen, setComputeOpen] = useState(false);

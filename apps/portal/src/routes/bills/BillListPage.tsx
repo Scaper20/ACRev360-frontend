@@ -2,6 +2,7 @@ import { apiClient, errorMessage } from '@acrev360/api';
 import { Button, ClickableRow, NumCell, Pagination, TableWrap, money, shortDate } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 import { BillDetailModal } from './BillDetailModal';
 import { NewBillModal } from './NewBillModal';
 
@@ -16,6 +17,13 @@ const TAG_FOR: Record<string, string> = {
 };
 
 export function BillListPage() {
+  const { user } = useAuth();
+  // POST /api/v1/bills is COUNCIL_ADMIN/CONSULTANT-only server-side —
+  // confirmed live it 403s for COUNCIL_IGR_HEAD despite that role reaching
+  // this page (read-only on bills). This button had no gate at all before
+  // the RBAC expansion added roles that could reach this page without
+  // being able to create a bill.
+  const canIssueBill = user?.access_level === 'COUNCIL_ADMIN' || user?.access_level === 'CONSULTANT';
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
@@ -56,9 +64,11 @@ export function BillListPage() {
           ))}
         </select>
         <div className="grow" />
-        <Button variant="primary" onClick={() => setOpenNew(true)}>
-          New Bill
-        </Button>
+        {canIssueBill && (
+          <Button variant="primary" onClick={() => setOpenNew(true)}>
+            New Bill
+          </Button>
+        )}
       </div>
       <div className="card">
         <TableWrap>

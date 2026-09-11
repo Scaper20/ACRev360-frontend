@@ -13,15 +13,20 @@ const KYC_TAG: Record<string, string> = { VERIFIED: 'ok', FLAGGED: 'bad', PENDIN
 const BILL_STATUS_TAG: Record<string, string> = { PAID: 'ok', OVERDUE: 'bad', PART_PAID: 'warn', CANCELLED: 'neutral', SUPERSEDED: 'neutral' };
 const BILL_STATUSES = ['ISSUED', 'PART_PAID', 'PAID', 'OVERDUE', 'CANCELLED', 'SUPERSEDED'];
 
+// Confirmed live against the qa_council_* RBAC test accounts: GET
+// /api/v1/consultants passes for these three roles in addition to
+// COUNCIL_ADMIN (COUNCIL_IT gets a 403 on this same list endpoint despite
+// passing consultants/{id}/revenue-officers's own separate permission).
+const CAN_LIST_CONSULTANTS = new Set(['COUNCIL_ADMIN', 'COUNCIL_IGR_HEAD', 'COUNCIL_TREASURY', 'COUNCIL_AUDITOR']);
+
 function useConsultantOptions() {
   const { user } = useAuth();
-  // /api/v1/consultants is COUNCIL_ADMIN-only server-side (same reasoning as
-  // AgentsPage's own copy of this query) — Reports has no route-level role
-  // check of its own and is reachable by direct URL, so skip the guaranteed
-  // 403 for anyone who isn't admin rather than firing it unconditionally.
+  // Reports has no route-level role check of its own and is reachable by
+  // direct URL, so skip the guaranteed 403 for anyone who can't list
+  // consultants rather than firing it unconditionally.
   return useQuery({
     queryKey: ['consultants'],
-    enabled: user?.access_level === 'COUNCIL_ADMIN',
+    enabled: user != null && CAN_LIST_CONSULTANTS.has(user.access_level),
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/api/v1/consultants', { params: { query: {} } });
       if (error) throw new Error(errorMessage(error));

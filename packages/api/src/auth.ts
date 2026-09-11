@@ -39,5 +39,33 @@ export async function me(): Promise<Me> {
 /** access_level as returned by /auth/me — mirrors the backend's roles
  * (see V2_ARCHITECTURE.md §8, plus REVENUE_OFFICER added later: a read-only,
  * single-consultant-scoped account — see SubConsultantViewSet.revenue_officers).
- * Field agents don't use this frontend. */
-export type AccessLevel = 'COUNCIL_ADMIN' | 'CONSULTANT' | 'AGENT' | 'GLOBAL_VIEW' | 'REVENUE_OFFICER';
+ * Field agents don't use this frontend.
+ *
+ * The RBAC expansion (2026-09-11, see docs/RBAC_EXPANSION_DESIGN.md and the
+ * FRONTEND_HANDOFF_RBAC doc on the backend side) added everything from
+ * COUNCIL_IGR_HEAD down — the four council-tier roles built out in the
+ * portal so far, the platform-tier (council=null) roles and RATEPAYER/
+ * RATEPAYER_PROXY are typed here for exhaustiveness but have no UI yet. */
+export type AccessLevel =
+  | 'COUNCIL_ADMIN'
+  | 'CONSULTANT'
+  | 'AGENT'
+  | 'GLOBAL_VIEW'
+  | 'REVENUE_OFFICER'
+  | 'COUNCIL_IGR_HEAD'
+  | 'COUNCIL_TREASURY'
+  | 'COUNCIL_AUDITOR'
+  | 'COUNCIL_IT'
+  | 'CONSULTANT_STAFF'
+  | 'AGENT_SUPERVISOR'
+  | 'SUPER_ADMIN'
+  | 'PLATFORM_ADMIN'
+  | 'DEVOPS_ADMIN'
+  | 'BD_VIEW'
+  | 'COMPLIANCE_VIEW'
+  | 'FINANCE_ADMIN'
+  | 'SUPPORT_ADMIN'
+  | 'ANALYTICS_VIEW'
+  | 'EXTERNAL_AUDITOR'
+  | 'RATEPAYER'
+  | 'RATEPAYER_PROXY';

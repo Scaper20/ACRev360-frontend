@@ -11,8 +11,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
+         *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
+         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
+         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
+         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     ward/team only) happens in get_queryset() via common.scoping.
+         */
         get: operations["v1_agents_list"];
         put?: never;
+        /**
+         * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
+         *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
+         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
+         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
+         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     ward/team only) happens in get_queryset() via common.scoping.
+         */
         post: operations["v1_agents_create"];
         delete?: never;
         options?: never;
@@ -27,6 +43,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
+         *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
+         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
+         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
+         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     ward/team only) happens in get_queryset() via common.scoping.
+         */
         get: operations["v1_agents_retrieve"];
         put?: never;
         post?: never;
@@ -124,6 +148,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
+         *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
+         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
+         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
+         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     ward/team only) happens in get_queryset() via common.scoping.
+         */
         post: operations["v1_agents_portfolio_end_create"];
         delete?: never;
         options?: never;
@@ -138,8 +170,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description DEVOPS_ADMIN (platform tier, council=null — docs/RBAC_EXPANSION_DESIGN.md)
+         *     reads/manages integration keys across every active council, matching the
+         *     matrix's "API keys, integration configs... no direct business-data edit
+         *     rights needed" — it never gets access_level_permission on any billing/
+         *     payment/payer viewset, only this one.
+         */
         get: operations["v1_api_clients_list"];
         put?: never;
+        /**
+         * @description DEVOPS_ADMIN (platform tier, council=null — docs/RBAC_EXPANSION_DESIGN.md)
+         *     reads/manages integration keys across every active council, matching the
+         *     matrix's "API keys, integration configs... no direct business-data edit
+         *     rights needed" — it never gets access_level_permission on any billing/
+         *     payment/payer viewset, only this one.
+         */
         post: operations["v1_api_clients_create"];
         delete?: never;
         options?: never;
@@ -154,6 +200,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description DEVOPS_ADMIN (platform tier, council=null — docs/RBAC_EXPANSION_DESIGN.md)
+         *     reads/manages integration keys across every active council, matching the
+         *     matrix's "API keys, integration configs... no direct business-data edit
+         *     rights needed" — it never gets access_level_permission on any billing/
+         *     payment/payer viewset, only this one.
+         */
         get: operations["v1_api_clients_retrieve"];
         put?: never;
         post?: never;
@@ -207,7 +260,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Last 300 audit events — council admin only. */
+        /**
+         * @description Last 300 audit events. Council-tier: COUNCIL_ADMIN plus the
+         *     RBAC-expansion COUNCIL_IGR_HEAD/COUNCIL_AUDITOR. Platform tier
+         *     (council=null): COMPLIANCE_VIEW, EXTERNAL_AUDITOR (CouncilGrant-scoped,
+         *     time-boxed), SUPER_ADMIN, PLATFORM_ADMIN — read across every council
+         *     they're entitled to via apps.common.platform_scope, never an RLS bypass.
+         *     See docs/RBAC_EXPANSION_DESIGN.md.
+         */
         get: operations["v1_audit_list"];
         put?: never;
         post?: never;
@@ -614,9 +674,10 @@ export interface paths {
         put?: never;
         /**
          * @description Platform-level bootstrap: create council -> configure -> ready for
-         *     activate_template_item calls. Gated on Django's own is_superuser/is_staff, not
-         *     a business access_level — creating a new tenant sits outside any existing
-         *     council's context, see apps/tenancy/services.py.
+         *     activate_template_item calls. Gated on Django's own is_superuser/is_staff OR
+         *     a SUPER_ADMIN/PLATFORM_ADMIN business login (docs/RBAC_EXPANSION_DESIGN.md) —
+         *     creating a new tenant sits outside any existing council's context either
+         *     way, see apps/tenancy/services.py.
          */
         post: operations["v1_councils_onboard_create"];
         delete?: never;
@@ -635,6 +696,14 @@ export interface paths {
         /**
          * @description Council admin / global view only — billed vs. collected by consultant (or
          *     Council Direct), matching the prototype's v_global_performance view.
+         *
+         *     Platform-tier callers (council=null — SUPER_ADMIN, PLATFORM_ADMIN,
+         *     BD_VIEW, COMPLIANCE_VIEW, ANALYTICS_VIEW, FINANCE_ADMIN, EXTERNAL_AUDITOR;
+         *     see docs/RBAC_EXPANSION_DESIGN.md) get one of these blocks per council
+         *     they're entitled to see, under `councils`, rather than a single-council
+         *     payload — computed via apps.common.platform_scope, never an RLS bypass.
+         *     BD_VIEW's "no PII" constraint is exactly why it's added only here and to
+         *     no payer/bill/payment/settlement viewset.
          */
         get: operations["v1_dashboard_global_retrieve"];
         put?: never;
@@ -818,6 +887,156 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Self-service endpoints for RATEPAYER/RATEPAYER_PROXY logins — read-only
+         *     access to one's own (or delegated) bills/payments/receipts, plus
+         *     managing who's delegated. See docs/RBAC_EXPANSION_DESIGN.md.
+         *
+         *     Deliberately not a ModelViewSet against Payer itself — a ratepayer has
+         *     no business editing their own registry record (KYC, ward, etc. stay
+         *     staff-managed); this only ever reads Bill/Payment/Receipt rows that
+         *     already exist, scoped through accessible_payer_ids.
+         *
+         *     No detail=True action here uses get_object()/self.queryset — every
+         *     action resolves its own rows directly through accessible_payer_ids, so
+         *     there's nothing to accidentally leave un-scoped by forgetting to
+         *     override get_queryset() on a mixin.
+         */
+        post: operations["v1_my_revoke_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Self-service endpoints for RATEPAYER/RATEPAYER_PROXY logins — read-only
+         *     access to one's own (or delegated) bills/payments/receipts, plus
+         *     managing who's delegated. See docs/RBAC_EXPANSION_DESIGN.md.
+         *
+         *     Deliberately not a ModelViewSet against Payer itself — a ratepayer has
+         *     no business editing their own registry record (KYC, ward, etc. stay
+         *     staff-managed); this only ever reads Bill/Payment/Receipt rows that
+         *     already exist, scoped through accessible_payer_ids.
+         *
+         *     No detail=True action here uses get_object()/self.queryset — every
+         *     action resolves its own rows directly through accessible_payer_ids, so
+         *     there's nothing to accidentally leave un-scoped by forgetting to
+         *     override get_queryset() on a mixin.
+         */
+        get: operations["v1_my_bills_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/delegations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description RATEPAYER only, never RATEPAYER_PROXY — matrix Decision #2's
+         *     "ratepayer explicitly grants/revokes" means the account being
+         *     delegated is the one in control, not the delegate.
+         */
+        get: operations["v1_my_delegations_list"];
+        put?: never;
+        /**
+         * @description RATEPAYER only, never RATEPAYER_PROXY — matrix Decision #2's
+         *     "ratepayer explicitly grants/revokes" means the account being
+         *     delegated is the one in control, not the delegate.
+         */
+        post: operations["v1_my_delegations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Self-service endpoints for RATEPAYER/RATEPAYER_PROXY logins — read-only
+         *     access to one's own (or delegated) bills/payments/receipts, plus
+         *     managing who's delegated. See docs/RBAC_EXPANSION_DESIGN.md.
+         *
+         *     Deliberately not a ModelViewSet against Payer itself — a ratepayer has
+         *     no business editing their own registry record (KYC, ward, etc. stay
+         *     staff-managed); this only ever reads Bill/Payment/Receipt rows that
+         *     already exist, scoped through accessible_payer_ids.
+         *
+         *     No detail=True action here uses get_object()/self.queryset — every
+         *     action resolves its own rows directly through accessible_payer_ids, so
+         *     there's nothing to accidentally leave un-scoped by forgetting to
+         *     override get_queryset() on a mixin.
+         */
+        get: operations["v1_my_payments_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Self-service endpoints for RATEPAYER/RATEPAYER_PROXY logins — read-only
+         *     access to one's own (or delegated) bills/payments/receipts, plus
+         *     managing who's delegated. See docs/RBAC_EXPANSION_DESIGN.md.
+         *
+         *     Deliberately not a ModelViewSet against Payer itself — a ratepayer has
+         *     no business editing their own registry record (KYC, ward, etc. stay
+         *     staff-managed); this only ever reads Bill/Payment/Receipt rows that
+         *     already exist, scoped through accessible_payer_ids.
+         *
+         *     No detail=True action here uses get_object()/self.queryset — every
+         *     action resolves its own rows directly through accessible_payer_ids, so
+         *     there's nothing to accidentally leave un-scoped by forgetting to
+         *     override get_queryset() on a mixin.
+         */
+        get: operations["v1_my_receipts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payers": {
         parameters: {
             query?: never;
@@ -860,6 +1079,28 @@ export interface paths {
         get: operations["v1_payers_draft_assessments_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payers/{id}/invite-ratepayer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Sets up this payer's own self-service login (RatepayerPortalViewSet)
+         *     — staff-invoked only, never public self-registration (see
+         *     docs/RBAC_EXPANSION_DESIGN.md's deliberately-not-built list: no
+         *     identity-verification design exists for an open signup flow).
+         */
+        post: operations["v1_payers_invite_ratepayer_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -980,6 +1221,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description COUNCIL_IGR_HEAD and COUNCIL_TREASURY (docs/RBAC_EXPANSION_DESIGN.md)
+         *     get the same run/resolve rights as COUNCIL_ADMIN here — reconciling
+         *     remittances is literally their job per the matrix, unlike every other
+         *     viewset those two roles only read. COUNCIL_AUDITOR stays read-only.
+         */
         get: operations["v1_reconciliation_list"];
         put?: never;
         post?: never;
@@ -1019,6 +1266,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @description COUNCIL_IGR_HEAD and COUNCIL_TREASURY (docs/RBAC_EXPANSION_DESIGN.md)
+         *     get the same run/resolve rights as COUNCIL_ADMIN here — reconciling
+         *     remittances is literally their job per the matrix, unlike every other
+         *     viewset those two roles only read. COUNCIL_AUDITOR stays read-only.
+         */
         post: operations["v1_reconciliation_exceptions_resolve_create"];
         delete?: never;
         options?: never;
@@ -1056,6 +1309,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @description COUNCIL_IGR_HEAD and COUNCIL_TREASURY (docs/RBAC_EXPANSION_DESIGN.md)
+         *     get the same run/resolve rights as COUNCIL_ADMIN here — reconciling
+         *     remittances is literally their job per the matrix, unlike every other
+         *     viewset those two roles only read. COUNCIL_AUDITOR stays read-only.
+         */
         post: operations["v1_reconciliation_run_create"];
         delete?: never;
         options?: never;
@@ -1768,6 +2027,10 @@ export interface components {
             readonly department: number | null;
             readonly department_name: string;
         };
+        CreateDelegationRequest: {
+            /** Format: email */
+            proxy_email: string;
+        };
         CreatePayerRequest: {
             payer_type: components["schemas"]["PayerTypeEnum"];
             first_name: string;
@@ -1955,6 +2218,14 @@ export interface components {
          * @enum {string}
          */
         IdTypeEnum: "NIN" | "PASSPORT" | "DRIVERS_LICENSE" | "VOTERS_CARD";
+        /**
+         * @description Write-only shape for PayerViewSet.invite_ratepayer — same pattern as
+         *     FieldAgentViewSet's write-only username/password create fields.
+         */
+        InviteRatepayerRequest: {
+            username: string;
+            password: string;
+        };
         IssueBillRequest: {
             payer_id: number;
             /** Format: date */
@@ -2251,6 +2522,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["POSTerminal"][];
         };
+        PaginatedPayerDelegationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["PayerDelegation"][];
+        };
         PaginatedPayerList: {
             /** @example 123 */
             count: number;
@@ -2502,6 +2788,17 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
             readonly draft_assessments_created: number;
+        };
+        PayerDelegation: {
+            readonly id: number;
+            readonly payer: number;
+            readonly proxy_user: number;
+            readonly proxy_email: string;
+            readonly proxy_full_name: string;
+            /** Format: date-time */
+            readonly granted_at: string;
+            /** Format: date-time */
+            readonly revoked_at: string | null;
         };
         /**
          * @description * `INDIVIDUAL` - Individual
@@ -4434,6 +4731,143 @@ export interface operations {
             };
         };
     };
+    v1_my_revoke_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayerDelegation"];
+                };
+            };
+        };
+    };
+    v1_my_bills_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBillList"];
+                };
+            };
+        };
+    };
+    v1_my_delegations_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPayerDelegationList"];
+                };
+            };
+        };
+    };
+    v1_my_delegations_create: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDelegationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CreateDelegationRequest"];
+                "multipart/form-data": components["schemas"]["CreateDelegationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPayerDelegationList"];
+                };
+            };
+        };
+    };
+    v1_my_payments_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPaymentList"];
+                };
+            };
+        };
+    };
+    v1_my_receipts_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReceiptList"];
+                };
+            };
+        };
+    };
     v1_payers_list: {
         parameters: {
             query?: {
@@ -4562,6 +4996,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftAssessment"][];
+                };
+            };
+        };
+    };
+    v1_payers_invite_ratepayer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRatepayerRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["InviteRatepayerRequest"];
+                "multipart/form-data": components["schemas"]["InviteRatepayerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payer"];
                 };
             };
         };
@@ -4867,6 +5328,8 @@ export interface operations {
         parameters: {
             query: {
                 consultant_id?: number;
+                /** @description Required for platform-tier callers (SUPER_ADMIN, PLATFORM_ADMIN, etc. — council=null) to pick which council's report to run; ignored for council-scoped callers, who always get their own council. */
+                council_id?: number;
                 date_from?: string;
                 date_to?: string;
                 /** @description PAYERS | BILLS | PAYMENTS | SETTLEMENTS */

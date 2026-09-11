@@ -10,9 +10,13 @@ const CHANNELS = ['POS', 'OTC', 'IB_MB', 'USSD', 'FIRSTMONIE', 'CASH'];
 // which stays exactly as-is for auditing a specific past day.
 const LIVE_REFRESH_MS = 60_000;
 
+// Reconciliation is "full access" for COUNCIL_IGR_HEAD and COUNCIL_TREASURY
+// too, not just COUNCIL_ADMIN — see FRONTEND_HANDOFF_RBAC's role table.
+const CAN_RUN_RECONCILIATION = new Set(['COUNCIL_ADMIN', 'COUNCIL_IGR_HEAD', 'COUNCIL_TREASURY']);
+
 export function ReconciliationPage() {
   const { user } = useAuth();
-  const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
+  const isAdmin = user != null && CAN_RUN_RECONCILIATION.has(user.access_level);
   const toast = useToast();
   const queryClient = useQueryClient();
   const [detailId, setDetailId] = useState<number | null>(null);
