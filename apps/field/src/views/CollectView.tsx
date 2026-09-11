@@ -7,11 +7,12 @@ import { cachePayerBills, getCachedPayerBills } from '../lib/fieldCache';
 import { enqueue } from '../lib/offlineQueue';
 import type { ReceiptResult } from './ReceiptView';
 
-type ChannelCode = 'POS' | 'OTC' | 'IB_MB' | 'USSD' | 'FIRSTMONIE';
+type ChannelCode = 'POS' | 'OTC' | 'IB_MB' | 'USSD' | 'FIRSTMONIE' | 'CASH';
 const PAYABLE_STATUSES = new Set(['ISSUED', 'PART_PAID', 'OVERDUE']);
 const CHANNELS: { code: ChannelCode; label: string }[] = [
+  { code: 'CASH', label: 'Cash' },
   { code: 'POS', label: 'POS' },
-  { code: 'OTC', label: 'Cash' },
+  { code: 'OTC', label: 'Branch Teller' },
   { code: 'IB_MB', label: 'IB/MB' },
   { code: 'USSD', label: 'USSD' },
   { code: 'FIRSTMONIE', label: 'FirstMonie' },
@@ -32,7 +33,7 @@ export function CollectView({
   const [billsFromCache, setBillsFromCache] = useState(false);
   const [loadingBills, setLoadingBills] = useState(false);
   const [billId, setBillId] = useState<number | null>(null);
-  const [channel, setChannel] = useState<ChannelCode>('OTC');
+  const [channel, setChannel] = useState<ChannelCode>('CASH');
   const [amount, setAmount] = useState('');
   const [bankRef, setBankRef] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -191,7 +192,7 @@ export function CollectView({
             <input type="number" min={0} max={Number(bill?.balance ?? 0)} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
           </Field>
 
-          {channel !== 'OTC' && (
+          {channel !== 'CASH' && (
             <Field label="Bank/transaction reference (optional)">
               <input value={bankRef} onChange={(e) => setBankRef(e.target.value)} />
             </Field>

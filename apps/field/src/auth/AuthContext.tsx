@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 interface AuthContextValue {
   user: Me | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /** For the profile-edit modal: PATCH /auth/me already responds with the
    * full Me shape (see MeView.update() on the backend), so callers should
@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      async login(username, password) {
-        const me = await apiLogin(username, password);
+      async login(email, password) {
+        const me = await apiLogin(email, password);
         // login() itself is role-agnostic (see packages/api/src/auth.ts) —
         // this app is for field agents only, the inverse of the portal's
         // own rule at its own call site.

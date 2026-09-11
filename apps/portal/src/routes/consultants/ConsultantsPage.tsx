@@ -1,6 +1,6 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, dateTime, money, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, GroupedSelect, Input, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, dateTime, money, money2, shortDate, useToast } from '@acrev360/ui';
 import type { TagVariant } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -13,6 +13,7 @@ import { useWards, wardNameLookup } from '../../lib/wards';
 
 const STATUS_TAG: Record<string, TagVariant> = { ACTIVE: 'ok', SUSPENDED: 'bad', EXITED: 'neutral', PENDING: 'warn' };
 const STATUSES = ['PENDING', 'ACTIVE', 'SUSPENDED', 'EXITED'];
+const SETTLEMENT_TAG: Record<string, TagVariant> = { COMPUTED: 'brass', APPROVED: 'warn', SETTLED: 'ok', DISPUTED: 'bad' };
 
 // A <button> styled to read as an inline text link, not href="javascript:void(0)"
 // — React 19 actively blocks javascript: URLs as an XSS hardening measure
@@ -250,6 +251,33 @@ export function ConsultantsPage() {
       toast(e instanceof Error ? e.message : 'Could not update contract dates', true);
     }
   }
+
+  const [settlementDetailId, setSettlementDetailId] = useState<number | null>(null);
+
+  const settlementsQuery = useQuery({
+    queryKey: ['consultants', 'settlements', detailId],
+    enabled: detailId != null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/settlements', { params: { query: { consultant_id: detailId! } } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
+
+  const settlementBillsQuery = useQuery({
+    queryKey: ['settlements', 'bills', settlementDetailId],
+    enabled: settlementDetailId != null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/settlements/{id}/bills', { params: { path: { id: String(settlementDetailId) } } });
+      if (error) throw new Error(errorMessage(error));
+      // Documented as PaginatedSettlementBillList, but confirmed live: comes
+      // back as a bare [], not {results: [], count: 0} — same class of
+      // schema-vs-runtime mismatch as revenueOfficersQuery above.
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+  });
+
+  const openSettlement = settlementsQuery.data?.find((s) => s.id === settlementDetailId);
 
   return (
     <>
@@ -534,6 +562,79 @@ export function ConsultantsPage() {
                 </button>
               </Field>
             </div>
+          )}
+
+          <h3 style={{ margin: '18px 0 8px' }}>Commission Settlements</h3>
+          {settlementsQuery.isLoading ? (
+            <div className="empty">Loading settlements…</div>
+          ) : settlementsQuery.error ? (
+            <div className="notice notice-bad">{settlementsQuery.error instanceof Error ? settlementsQuery.error.message : 'Failed to load settlements'}</div>
+          ) : settlementsQuery.data && settlementsQuery.data.length > 0 ? (
+            <TableWrap>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Period</th>
+                    <th className="r">Gross Collections</th>
+                    <th className="r">Commission</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {settlementsQuery.data.map((s) => (
+                    <ClickableRow key={s.id} onClick={() => setSettlementDetailId(s.id)}>
+                      <NumCell>
+                        {shortDate(s.period_start)} – {shortDate(s.period_end)}
+                      </NumCell>
+                      <NumCell className="r">{money2(s.gross_collections)}</NumCell>
+                      <NumCell className="r">{money2(s.commission_amount)}</NumCell>
+                      <td>
+                        <Tag variant={SETTLEMENT_TAG[s.status] ?? 'neutral'}>{s.status}</Tag>
+                      </td>
+                    </ClickableRow>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          ) : (
+            <div className="empty">No settlements computed for this consultant yet</div>
+          )}
+        </Modal>
+      )}
+
+      {openSettlement != null && (
+        <Modal
+          open
+          onClose={() => setSettlementDetailId(null)}
+          title={`Settlement — ${shortDate(openSettlement.period_start)} – ${shortDate(openSettlement.period_end)}`}
+          footer={<button className="btn btn-ghost" onClick={() => setSettlementDetailId(null)}>Close</button>}
+        >
+          <KV label="Gross collections">
+            <span className="num">{money2(openSettlement.gross_collections)}</span>
+          </KV>
+          <KV label="Commission rate">{openSettlement.commission_rate}%</KV>
+          <KV label="Commission amount">
+            <span className="num">{money2(openSettlement.commission_amount)}</span>
+          </KV>
+          <KV label="Status">
+            <Tag variant={SETTLEMENT_TAG[openSettlement.status] ?? 'neutral'}>{openSettlement.status}</Tag>
+          </KV>
+
+          <h3 style={{ margin: '16px 0 8px' }}>Bills in this settlement</h3>
+          {settlementBillsQuery.isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : settlementBillsQuery.error ? (
+            <div className="notice notice-bad">{settlementBillsQuery.error instanceof Error ? settlementBillsQuery.error.message : 'Failed to load bills'}</div>
+          ) : settlementBillsQuery.data && settlementBillsQuery.data.length > 0 ? (
+            settlementBillsQuery.data.map((b) => (
+              <KV key={b.bill_id} label={`${b.bill_ref} — ${b.payer_name}`}>
+                <span className="num">
+                  {money2(b.commission)} <span style={{ color: 'var(--ink-40)', fontSize: 12 }}>from {money2(b.collected)} collected</span>
+                </span>
+              </KV>
+            ))
+          ) : (
+            <div className="empty">No bills in this settlement</div>
           )}
         </Modal>
       )}

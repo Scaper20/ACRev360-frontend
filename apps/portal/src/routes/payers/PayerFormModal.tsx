@@ -30,7 +30,9 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
     },
   });
 
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [idNum, setIdNum] = useState('');
@@ -48,8 +50,8 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const groupedItems = toGroupedItems(flatRateItems);
 
   async function submit(force = false) {
-    if (!fullName.trim()) {
-      setError("Enter the payer's name");
+    if (!firstName.trim()) {
+      setError(isIndividual ? 'Enter the payer’s first name' : "Enter the business name");
       return;
     }
     if (ward === '') {
@@ -60,7 +62,9 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
     setSubmitting(true);
     try {
       const body: components['schemas']['CreatePayerRequest'] = {
-        full_name: fullName.trim(),
+        first_name: firstName.trim(),
+        middle_name: middleName.trim() || undefined,
+        last_name: lastName.trim() || undefined,
         payer_type: payerType,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -107,10 +111,26 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         </>
       }
     >
+      {isIndividual ? (
+        <Row>
+          <Field label="First name">
+            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </Field>
+          <Field label="Middle name (optional)">
+            <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} />
+          </Field>
+          <Field label="Last name">
+            <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </Field>
+        </Row>
+      ) : (
+        <Row>
+          <Field label="Business name">
+            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </Field>
+        </Row>
+      )}
       <Row>
-        <Field label={isIndividual ? 'Full name' : 'Business name'}>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </Field>
         <Field label="Phone">
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>

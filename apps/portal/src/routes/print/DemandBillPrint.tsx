@@ -4,19 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import './DemandBillPrint.css';
 
-/** Old prototype used the bill's internal numeric id for these synthetic
- * line references; the new backend's public bill lookup only exposes
- * bill_ref (a string, e.g. "KAC/2026/000123") — derive an equivalent
- * numeric seed from its trailing digits instead. Still stable and
- * reproducible per bill, just sourced differently. */
-function lineRef(billRefDigits: string, idx: number, code: string) {
-  const digits = String(code || '')
-    .replace(/\D/g, '')
-    .padEnd(6, '0')
-    .slice(-6);
-  return `SB-${billRefDigits.padStart(4, '0')}${String(idx).padStart(2, '0')}${digits}260${billRefDigits.padStart(4, '0')}`;
-}
-
 export function DemandBillPrint() {
   const [params] = useSearchParams();
   const billRef = params.get('bill');
@@ -39,8 +26,6 @@ export function DemandBillPrint() {
   // etc.) — due_date's year is a reliable proxy since bills are due 30 days
   // after issue, almost never crossing a calendar year.
   const year = new Date(bill.due_date).getFullYear();
-  const billRefDigits = (billRef.match(/\d+$/)?.[0] ?? '0').slice(-4);
-  const arrears = Number(bill.arrears_amount);
   const initialAmount = Number(bill.total_amount);
   const amountPaid = Number(bill.amount_paid);
   const totalDue = Number(bill.balance);
@@ -102,7 +87,6 @@ export function DemandBillPrint() {
           <thead>
             <tr>
               <th>Year</th>
-              <th>Bill Reference</th>
               <th>Summary</th>
               <th className="num">Arrears (₦)</th>
               <th className="num">Debit (₦)</th>
@@ -111,47 +95,27 @@ export function DemandBillPrint() {
             </tr>
           </thead>
           <tbody>
-            {bill.lines.map((l, i) => {
+            {bill.lines.map((l) => {
               const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
+              const lineBalance = Number(l.current_amount) + Number(l.arrears_amount) - Number(l.paid_amount);
               return (
                 <tr key={l.id}>
                   <td>{year}</td>
-                  <td className="num">{lineRef(billRefDigits, i + 1, l.harmonised_code)}</td>
                   <td>
                     {l.item_name}
                     {bandNote}
                   </td>
-                  <td className="num">{money2(0)}</td>
-                  <td className="num">{money2(l.line_amount)}</td>
-                  <td className="num">{money2(0)}</td>
-                  <td className="num">{money2(l.line_amount)}</td>
+                  <td className="num">{money2(l.arrears_amount)}</td>
+                  <td className="num">{money2(l.current_amount)}</td>
+                  <td className="num">{money2(l.paid_amount)}</td>
+                  <td className="num">{money2(lineBalance)}</td>
                 </tr>
               );
             })}
-            {arrears > 0 &&
-              bill.superseded_bills.flatMap((s) =>
-                s.lines.map((l) => {
-                  const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
-                  return (
-                    <tr key={`${s.bill_ref}-${l.id}`}>
-                      <td>{year}</td>
-                      <td className="num">{s.bill_ref}</td>
-                      <td>
-                        {l.item_name}
-                        {bandNote} — arrears
-                      </td>
-                      <td className="num">{money2(l.line_amount)}</td>
-                      <td className="num">{money2(0)}</td>
-                      <td className="num">{money2(0)}</td>
-                      <td className="num">{money2(l.line_amount)}</td>
-                    </tr>
-                  );
-                }),
-              )}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2} rowSpan={amountPaid > 0 ? 3 : 2}>
+              <td rowSpan={amountPaid > 0 ? 3 : 2}>
                 Hours of Payment: Monday &ndash; Friday, 8:00 a.m. &ndash; 4:00 p.m.
               </td>
               <td rowSpan={amountPaid > 0 ? 3 : 2}>
@@ -159,17 +123,17 @@ export function DemandBillPrint() {
                 <br />
                 <span style={{ fontWeight: 400 }}>{bill.bill_ref}</span>
               </td>
-              <td colSpan={3}>Initial Amount</td>
+              <td colSpan={2}>Initial Amount</td>
               <td className="num">{money2(initialAmount)}</td>
             </tr>
             {amountPaid > 0 && (
               <tr>
-                <td colSpan={3}>Amount Paid</td>
+                <td colSpan={2}>Amount Paid</td>
                 <td className="num">({money2(amountPaid)})</td>
               </tr>
             )}
             <tr>
-              <td colSpan={3}>Balance Due</td>
+              <td colSpan={2}>Balance Due</td>
               <td className="num">{money2(totalDue)}</td>
             </tr>
           </tfoot>

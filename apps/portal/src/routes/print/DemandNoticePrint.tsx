@@ -30,7 +30,6 @@ export function DemandNoticePrint() {
   const billRefDigits = (billRef.match(/\d+$/)?.[0] ?? '0').slice(-4);
   const noticeNo = 2000 + (Number(billRefDigits) % 8000);
   const today = new Date();
-  const arrears = Number(bill.arrears_amount);
   const amountPaid = Number(bill.amount_paid);
   // The notice is a demand for what's still owed, not a record of the full
   // original assessment — grandTotal is already bill.balance (net of any
@@ -90,12 +89,14 @@ export function DemandNoticePrint() {
               <th className="num">Payment Code</th>
               <th className="num">Arrears if any</th>
               <th className="num">Current Bill</th>
+              <th className="num">Paid</th>
               <th className="num">Total</th>
             </tr>
           </thead>
           <tbody>
             {bill.lines.map((l, i) => {
               const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
+              const lineTotal = Number(l.current_amount) + Number(l.arrears_amount) - Number(l.paid_amount);
               return (
                 <tr key={l.id}>
                   <td className="sn">{i + 1}</td>
@@ -104,45 +105,23 @@ export function DemandNoticePrint() {
                     {bandNote}
                   </td>
                   <td className="num">{l.harmonised_code}</td>
-                  <td className="num">{money2(0)}</td>
-                  <td className="num">{money2(l.line_amount)}</td>
-                  <td className="num">{money2(l.line_amount)}</td>
+                  <td className="num">{Number(l.arrears_amount) > 0 ? money2(l.arrears_amount) : '—'}</td>
+                  <td className="num">{money2(l.current_amount)}</td>
+                  <td className="num">{Number(l.paid_amount) > 0 ? money2(l.paid_amount) : '—'}</td>
+                  <td className="num">{money2(lineTotal)}</td>
                 </tr>
               );
             })}
-            {arrears > 0 &&
-              (() => {
-                let sn = bill.lines.length;
-                return bill.superseded_bills.flatMap((s) =>
-                  s.lines.map((l) => {
-                    sn += 1;
-                    const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
-                    return (
-                      <tr key={`${s.bill_ref}-${l.id}`}>
-                        <td className="sn">{sn}</td>
-                        <td>
-                          {l.item_name}
-                          {bandNote} — arrears from {s.bill_ref}
-                        </td>
-                        <td className="num">{l.harmonised_code}</td>
-                        <td className="num">{money2(l.line_amount)}</td>
-                        <td className="num">{money2(0)}</td>
-                        <td className="num">{money2(l.line_amount)}</td>
-                      </tr>
-                    );
-                  }),
-                );
-              })()}
           </tbody>
           <tfoot>
             {amountPaid > 0 && (
               <tr>
-                <td colSpan={5}>Less: Amount Already Paid</td>
+                <td colSpan={6}>Less: Amount Already Paid</td>
                 <td className="num">({money2(amountPaid)})</td>
               </tr>
             )}
             <tr>
-              <td colSpan={5}>Grand Total — Amount Owed</td>
+              <td colSpan={6}>Grand Total — Amount Owed</td>
               <td className="num">{money2(grandTotal)}</td>
             </tr>
           </tfoot>

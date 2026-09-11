@@ -2,23 +2,17 @@ import { Button, Field, Input, Notice } from '@acrev360/ui';
 import { useState } from 'react';
 import './LoginScreen.css';
 
-// seed_demo_data creates agent01..08 (see apps/tenancy/management/commands/
-// seed_demo_data.py's _seed_agents) — same shared demo password as the
-// portal's own admin/consultant1/stakeholder accounts.
-const DEMO_PASSWORD = 'acrev360-2026';
-const DEMO_USERNAME = 'agent01';
-
-export function LoginScreen({ onLogin }: { onLogin: (username: string, password: string) => Promise<void> }) {
-  const [username, setUsername] = useState('');
+export function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function attemptLogin(u: string, p: string) {
+  async function attemptLogin(e: string, p: string) {
     setError(null);
     setSubmitting(true);
     try {
-      await onLogin(u, p);
+      await onLogin(e, p);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
@@ -28,13 +22,7 @@ export function LoginScreen({ onLogin }: { onLogin: (username: string, password:
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    void attemptLogin(username, password);
-  }
-
-  function quickLogin() {
-    setUsername(DEMO_USERNAME);
-    setPassword(DEMO_PASSWORD);
-    void attemptLogin(DEMO_USERNAME, DEMO_PASSWORD);
+    void attemptLogin(email, password);
   }
 
   return (
@@ -45,8 +33,8 @@ export function LoginScreen({ onLogin }: { onLogin: (username: string, password:
         <p>Sign in with your field agent account.</p>
         <form onSubmit={handleSubmit}>
           {error != null && <Notice variant="bad">{error}</Notice>}
-          <Field label="Username" htmlFor="fu">
-            <Input id="fu" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+          <Field label="Email" htmlFor="fe">
+            <Input id="fe" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
           </Field>
           <Field label="Password" htmlFor="fp">
             <Input id="fp" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
@@ -55,10 +43,6 @@ export function LoginScreen({ onLogin }: { onLogin: (username: string, password:
             {submitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
-
-        <button type="button" className="field-demo-login" disabled={submitting} onClick={quickLogin}>
-          Try the demo agent account
-        </button>
       </div>
     </div>
   );

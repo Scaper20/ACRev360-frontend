@@ -1,4 +1,5 @@
 import { apiClient, errorMessage } from '@acrev360/api';
+import type { components } from '@acrev360/api';
 import { Field, Modal, Notice, TypeaheadPicker, money, useToast } from '@acrev360/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CSSProperties } from 'react';
@@ -28,6 +29,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [rollArrears, setRollArrears] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<components['schemas']['Bill'] | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function addLine(line: DraftLine) {
@@ -53,7 +55,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
     });
   }
 
-  async function submit() {
+  async function submit(force = false) {
     if (!payer) {
       setError('Search and select a payer first');
       return;
@@ -65,7 +67,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
     setError(null);
     setSubmitting(true);
     try {
-      const { data, error } = await apiClient.POST('/api/v1/bills', {
+      const { data, error, response } = await apiClient.POST('/api/v1/bills', {
         body: {
           payer_id: payer.id,
           lines: lines.map((l) => ({
@@ -77,9 +79,16 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
           })),
           bill_all_drafts: false,
           roll_arrears: rollArrears,
+          force,
         },
       });
-      if (error) throw new Error(errorMessage(error));
+      if (error) {
+        if (response.status === 409 && 'duplicate_of' in error) {
+          setDuplicate((error as { duplicate_of: components['schemas']['Bill'] }).duplicate_of);
+          return;
+        }
+        throw new Error(errorMessage(error));
+      }
       toast(`Bill issued — ${data.bill_ref} (${money(data.total_amount)})` + (Number(data.arrears_amount) > 0 ? ` · ${money(data.arrears_amount)} arrears consolidated` : ''));
       await queryClient.invalidateQueries({ queryKey: ['bills'] });
       onCreated(data.id);
@@ -89,6 +98,17 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function forceSubmit() {
+    if (!window.confirm(`${payer?.full_name ?? 'This payer'} already has bill ${duplicate?.bill_ref} for this year. Issue a new bill anyway?`)) return;
+    void submit(true);
+  }
+
+  function goToExisting() {
+    if (duplicate == null) return;
+    onCreated(duplicate.id);
+    onClose();
   }
 
   const total = lines.reduce((s, l) => s + l.amount, 0);
@@ -103,7 +123,7 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
           <button className="btn btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={submit} disabled={submitting}>
+          <button className="btn btn-primary" onClick={() => submit(false)} disabled={submitting}>
             Issue Bill
           </button>
         </>
@@ -156,6 +176,19 @@ export function NewBillModal({ onClose, onCreated }: { onClose: () => void; onCr
       </label>
 
       {error != null && <Notice variant="bad">{error}</Notice>}
+      {duplicate != null && (
+        <Notice variant="bad">
+          {payer?.full_name ?? 'This payer'} already has an active bill for this year — {duplicate.bill_ref} (balance {money(duplicate.balance)}).
+          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={goToExisting}>
+              Go to existing bill
+            </button>
+            <button className="btn btn-brass btn-sm" onClick={forceSubmit}>
+              Issue anyway
+            </button>
+          </div>
+        </Notice>
+      )}
     </Modal>
   );
 }

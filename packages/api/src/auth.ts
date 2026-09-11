@@ -10,9 +10,9 @@ export type Me = components['schemas']['Me'];
  * app's own AuthContext, not here. Callers that reject the returned role
  * should call authStore.clear() themselves before surfacing the error, same
  * as any other post-login validation failure. */
-export async function login(username: string, password: string): Promise<Me> {
+export async function login(email: string, password: string): Promise<Me> {
   const { data, error } = await apiClient.POST('/api/v1/auth/login', {
-    body: { username, password },
+    body: { email, password },
   });
   if (error) throw new Error(errorMessage(error));
   authStore.setTokens(data.access, data.refresh);

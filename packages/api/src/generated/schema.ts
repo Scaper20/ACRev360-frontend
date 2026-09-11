@@ -58,6 +58,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{id}/assign-payer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Hands an already-registered payer to this specific agent —
+         *     get_queryset() already scopes a CONSULTANT caller to their own
+         *     agents, so reaching this for another firm's agent 404s before this
+         *     body runs, same as `portfolio` above. Once assigned, the payer comes
+         *     out of the general consultant-team pool for scoping purposes (see
+         *     apps.common.scoping.portfolio_filter) — only this agent, and the
+         *     consultant manager, see it from here on.
+         */
+        post: operations["v1_agents_assign_payer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{id}/portfolio": {
         parameters: {
             query?: never;
@@ -132,6 +157,27 @@ export interface paths {
         get: operations["v1_api_clients_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/api-clients/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The clean, audited way to deactivate a key — is_active is already
+         *     the revocation flag (see APIClient), this just exposes flipping it
+         *     through a real endpoint instead of a raw DB update.
+         */
+        post: operations["v1_api_clients_revoke_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -980,6 +1026,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reconciliation/live-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Always-current dashboard view alongside the manual `run` action
+         *     above — computed fresh on every call, no ReconciliationRun triggered
+         *     or required. Defaults to today; ?date=YYYY-MM-DD for any other day.
+         */
+        get: operations["v1_reconciliation_live_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reconciliation/run": {
         parameters: {
             query?: never;
@@ -1149,6 +1216,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settlements/{id}/bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Admin drill-down: one settlement's underlying bills, each with its
+         *     own collected amount and commission share. Same scoping as list() —
+         *     get_object() already applies get_queryset(), so a CONSULTANT/
+         *     REVENUE_OFFICER can only drill into their own settlements.
+         */
+        get: operations["v1_settlements_bills_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settlements/{id}/status_change": {
         parameters: {
             query?: never;
@@ -1175,6 +1264,29 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1_settlements_compute_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settlements/my-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Consultant's own dashboard: this-year/approved/settled commission
+         *     totals plus their own per-bill list, across every settlement period
+         *     that falls in the current year. A consultant with no settlements
+         *     computed yet for this year gets zeros and an empty bill list —
+         *     commission isn't official until compute_settlements() has run.
+         */
+        get: operations["v1_settlements_my_summary_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1317,10 +1429,24 @@ export interface components {
             channel: number;
             readonly api_key: string;
             is_active?: boolean;
+            /**
+             * Format: date-time
+             * @description Null means the key never expires.
+             */
+            expires_at?: string | null;
+            scopes?: components["schemas"]["ScopesEnum"][];
+            /** Format: date-time */
+            readonly last_used_at: string | null;
         };
         APIClientRequest: {
             channel: number;
             is_active?: boolean;
+            /**
+             * Format: date-time
+             * @description Null means the key never expires.
+             */
+            expires_at?: string | null;
+            scopes?: components["schemas"]["ScopesEnum"][];
         };
         AddLineRequest: {
             revenue_item_id: number;
@@ -1365,9 +1491,19 @@ export interface components {
          * @description Carries `council_id` on the access token itself so apps.tenancy.middleware can
          *     set the RLS context by decoding the token alone — no DB query needed before the
          *     tenant context is known. See apps/tenancy/middleware.py.
+         *
+         *     Logs in by email, not username — but AppUser.USERNAME_FIELD stays
+         *     "username" deliberately (lower blast radius: Django admin/permissions
+         *     internals key off USERNAME_FIELD too, and there's no reason to touch
+         *     those). So this can't just set `username_field = "email"` and let the
+         *     parent's validate() call authenticate(email=...) — Django's ModelBackend
+         *     only ever looks for the USERNAME_FIELD name ("username") in the kwargs it
+         *     receives, and would silently fail to authenticate anyone. Instead: resolve
+         *     the given email to its underlying username first, then authenticate and
+         *     build tokens exactly the way the stock username/password flow always did.
          */
         AppTokenObtainPairRequest: {
-            username: string;
+            email: string;
             password: string;
         };
         /**
@@ -1378,6 +1514,9 @@ export interface components {
          * @enum {string}
          */
         AssetTypeEnum: "PREMISES" | "SHOP" | "KIOSK" | "SIGNAGE";
+        AssignPayerRequest: {
+            payer_id: number;
+        };
         AuditLog: {
             readonly id: number;
             readonly action: string;
@@ -1453,6 +1592,12 @@ export interface components {
             readonly quantity: string;
             /** Format: decimal */
             line_amount: string;
+            /** Format: decimal */
+            readonly current_amount: string;
+            /** Format: decimal */
+            readonly arrears_amount: string;
+            /** Format: decimal */
+            readonly paid_amount: string;
             readonly band_label: string;
             readonly tier_label: string;
         };
@@ -1507,9 +1652,10 @@ export interface components {
          *     * `IB_MB` - Internet / Mobile Banking
          *     * `USSD` - USSD
          *     * `FIRSTMONIE` - FirstMonie Agent Banking
+         *     * `CASH` - Cash
          * @enum {string}
          */
-        ChannelCodeEnum: "POS" | "OTC" | "IB_MB" | "USSD" | "FIRSTMONIE";
+        ChannelCodeEnum: "POS" | "OTC" | "IB_MB" | "USSD" | "FIRSTMONIE" | "CASH";
         CollectedByChannel: {
             code: string;
             label: string;
@@ -1624,7 +1770,9 @@ export interface components {
         };
         CreatePayerRequest: {
             payer_type: components["schemas"]["PayerTypeEnum"];
-            full_name: string;
+            first_name: string;
+            middle_name?: string;
+            last_name?: string;
             phone?: string;
             email?: string;
             address?: string;
@@ -1816,6 +1964,8 @@ export interface components {
             bill_all_drafts: boolean;
             /** @default false */
             roll_arrears: boolean;
+            /** @default false */
+            force: boolean;
         };
         IssueBillResponse: {
             readonly id: number;
@@ -1850,6 +2000,15 @@ export interface components {
         KycStatusRequest: {
             kyc_status: components["schemas"]["KycStatusEnum"];
         };
+        LiveSummary: {
+            /** Format: date */
+            run_date: string;
+            /** Format: decimal */
+            total_platform: string;
+            /** Format: decimal */
+            total_bank: string;
+            unmatched_credits: components["schemas"]["UnmatchedCredit"][];
+        };
         LogoutRequestRequest: {
             refresh: string;
         };
@@ -1874,6 +2033,15 @@ export interface components {
             readonly agent_code: string;
             readonly assigned_ward_id: number;
             readonly assigned_ward_name: string;
+        };
+        MySettlementSummary: {
+            /** Format: decimal */
+            total_this_year: string;
+            /** Format: decimal */
+            approved_total: string;
+            /** Format: decimal */
+            settled_total: string;
+            bills: components["schemas"]["SettlementBill"][];
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -2188,6 +2356,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RevenueOfficer"][];
         };
+        PaginatedSettlementBillList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["SettlementBill"][];
+        };
         PaginatedStakeholderList: {
             /** @example 123 */
             count: number;
@@ -2263,6 +2446,7 @@ export interface components {
          */
         PatchedUpdateProfileRequest: {
             full_name?: string;
+            /** Format: email */
             email?: string;
             phone?: string;
         };
@@ -2270,7 +2454,17 @@ export interface components {
             readonly id: number;
             readonly payer_ref: string;
             payer_type: components["schemas"]["PayerTypeEnum"];
-            full_name: string;
+            first_name: string;
+            middle_name?: string;
+            last_name?: string;
+            /**
+             * @description Read-only display reconstruction — every consumer that only ever
+             *     read this name (receipts, bill/payment/debt serializers, search
+             *     result labels) keeps working unchanged; only ORM-level filtering and
+             *     ordering had to move to the real first_name/middle_name/last_name
+             *     columns, since a property isn't queryable at the database level.
+             */
+            readonly full_name: string;
             phone?: string;
             email?: string;
             address?: string;
@@ -2286,7 +2480,17 @@ export interface components {
             readonly id: number;
             readonly payer_ref: string;
             payer_type: components["schemas"]["PayerTypeEnum"];
-            full_name: string;
+            first_name: string;
+            middle_name?: string;
+            last_name?: string;
+            /**
+             * @description Read-only display reconstruction — every consumer that only ever
+             *     read this name (receipts, bill/payment/debt serializers, search
+             *     result labels) keeps working unchanged; only ORM-level filtering and
+             *     ordering had to move to the real first_name/middle_name/last_name
+             *     columns, since a property isn't queryable at the database level.
+             */
+            readonly full_name: string;
             phone?: string;
             email?: string;
             address?: string;
@@ -2328,6 +2532,24 @@ export interface components {
             readonly posted_by_name: string;
             readonly receipt_ref: string;
             readonly qr_token: string;
+            readonly allocations: components["schemas"]["PaymentAllocation"][];
+        };
+        /**
+         * @description How much of a payment landed on which bill line — the FIFO breakdown
+         *     itself (see payments.services.post_payment), not just each line's
+         *     resulting paid_amount total. Nested off Payment/Receipt rather than a
+         *     dedicated endpoint, matching how this codebase already nests BillLine
+         *     detail off Bill/Receipt elsewhere.
+         */
+        PaymentAllocation: {
+            readonly id: number;
+            readonly bill_line: number;
+            readonly harmonised_code: string;
+            readonly item_name: string;
+            /** Format: decimal */
+            readonly amount: string;
+            /** Format: date-time */
+            readonly created_at: string;
         };
         PostPayment: {
             bill_id: number;
@@ -2448,6 +2670,7 @@ export interface components {
             /** Format: decimal */
             readonly amount: string;
             readonly lines: components["schemas"]["BillLineDetail"][];
+            readonly allocations: components["schemas"]["PaymentAllocation"][];
             /** Format: uuid */
             readonly qr_token: string;
             readonly verified_count: number;
@@ -2551,6 +2774,11 @@ export interface components {
             date: string;
             channel_code: string;
         };
+        /**
+         * @description * `payments.webhook.post` - payments.webhook.post
+         * @enum {string}
+         */
+        ScopesEnum: "payments.webhook.post";
         SendReceiptEmailResult: {
             attempted: boolean;
             sent?: boolean;
@@ -2569,6 +2797,16 @@ export interface components {
         };
         SetDepartmentRequest: {
             department_id: number | null;
+        };
+        SettlementBill: {
+            bill_id: number;
+            bill_ref: string;
+            payer_name: string;
+            /** Format: decimal */
+            collected: string;
+            /** Format: decimal */
+            commission: string;
+            status: components["schemas"]["Status5d5Enum"];
         };
         SettlementStatusRequest: {
             status: components["schemas"]["Status5d5Enum"];
@@ -2694,6 +2932,13 @@ export interface components {
          *     line-level detail behind that lump sum was always sitting right here,
          *     unexposed — this is a read-only addition, no new storage or change to
          *     roll_arrears itself.
+         *
+         *     Sources `lines` from Bill.all_arrears_lines(), not the bare `lines`
+         *     manager — a superseded bill that was itself a consolidation (e.g.
+         *     000006 -> 000010, then 000010 -> 000011) needs its *own* superseded
+         *     history included too, not just its direct lines, or a second (or
+         *     deeper) level of consolidation silently drops the oldest lines. See
+         *     Bill.all_arrears_lines's docstring.
          */
         SupersededBill: {
             bill_ref: string;
@@ -2747,6 +2992,15 @@ export interface components {
             text: string;
             msisdn: string;
         };
+        UnmatchedCredit: {
+            readonly id: number;
+            readonly channel_code: string;
+            readonly bank_txn_ref: string;
+            /** Format: decimal */
+            readonly amount: string;
+            /** Format: date-time */
+            readonly received_at: string;
+        };
         UpdateLineRequest: {
             /** Format: decimal */
             line_amount: string;
@@ -2760,7 +3014,8 @@ export interface components {
          */
         UpdateProfile: {
             full_name: string;
-            email?: string;
+            /** Format: email */
+            email: string;
             phone?: string;
         };
         VerifyReceiptResponse: {
@@ -2805,6 +3060,13 @@ export interface components {
             readonly id: number;
             readonly payer_ref: string;
             readonly payer_type: components["schemas"]["PayerTypeEnum"];
+            /**
+             * @description Read-only display reconstruction — every consumer that only ever
+             *     read this name (receipts, bill/payment/debt serializers, search
+             *     result labels) keeps working unchanged; only ORM-level filtering and
+             *     ordering had to move to the real first_name/middle_name/last_name
+             *     columns, since a property isn't queryable at the database level.
+             */
             readonly full_name: string;
             readonly phone: string;
             readonly address: string;
@@ -2917,6 +3179,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentActivityResponse"];
+                };
+            };
+        };
+    };
+    v1_agents_assign_payer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignPayerRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AssignPayerRequest"];
+                "multipart/form-data": components["schemas"]["AssignPayerRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payer"];
                 };
             };
         };
@@ -3048,6 +3337,33 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIClient"];
+                };
+            };
+        };
+    };
+    v1_api_clients_revoke_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["APIClientRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["APIClientRequest"];
+                "multipart/form-data": components["schemas"]["APIClientRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4501,6 +4817,27 @@ export interface operations {
             };
         };
     };
+    v1_reconciliation_live_summary_retrieve: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSummary"];
+                };
+            };
+        };
+    };
     v1_reconciliation_run_create: {
         parameters: {
             query?: never;
@@ -4534,6 +4871,8 @@ export interface operations {
                 date_to?: string;
                 /** @description PAYERS | BILLS | PAYMENTS | SETTLEMENTS */
                 entity: string;
+                /** @description csv — exports exactly the filtered/grouped rows shown on screen. Omit for the normal JSON response. (Named 'export', not 'format' — DRF reserves ?format= for its own content-negotiation and 404s on a value with no matching renderer.) */
+                export?: string;
                 /** @description Repeatable, max 2 — ward, revenue_item, consultant, date */
                 group_by?: string;
                 /** @description BILLS only */
@@ -4727,6 +5066,8 @@ export interface operations {
     v1_settlements_list: {
         parameters: {
             query?: {
+                /** @description Filter by consultant. Narrows within the caller's own scope — it never widens it for a CONSULTANT/REVENUE_OFFICER, who only ever see their own settlements regardless. */
+                consultant_id?: number;
                 /** @description A page number within the paginated result set. */
                 page?: number;
                 /** @description Search by consultant name */
@@ -4744,6 +5085,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedCommissionSettlementList"];
+                };
+            };
+        };
+    };
+    v1_settlements_bills_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSettlementBillList"];
                 };
             };
         };
@@ -4799,6 +5164,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedCommissionSettlementList"];
+                };
+            };
+        };
+    };
+    v1_settlements_my_summary_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySettlementSummary"];
                 };
             };
         };

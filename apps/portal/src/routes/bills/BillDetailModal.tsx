@@ -159,61 +159,44 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
           </KV>
 
           <h3 style={{ margin: '16px 0 8px' }}>Line Items</h3>
+          <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--ink-40)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.02 }}>
+            <div style={{ flex: 2, minWidth: 0 }}>Item</div>
+            <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+              Current
+            </div>
+            <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+              Arrears
+            </div>
+            <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+              Paid
+            </div>
+            {isAdmin && <div style={{ width: 64, flex: 'none' }} />}
+          </div>
           {bill.lines.map((l) => {
             const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
-            return isAdmin ? (
-              <div className="row" key={l.id} style={{ alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ flex: 2, minWidth: 180 }}>
+            return (
+              <div key={l.id} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ flex: 2, minWidth: 0 }}>
                   {l.harmonised_code} — {l.item_name}
                   {bandNote}
                 </div>
-                <div style={{ maxWidth: 130 }} className="num">
-                  {money(l.line_amount)}
+                <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+                  {money(l.current_amount)}
                 </div>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => removeLine(l.id)}>
-                  Remove
-                </button>
+                <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+                  {Number(l.arrears_amount) > 0 ? money(l.arrears_amount) : '—'}
+                </div>
+                <div style={{ width: 80, minWidth: 0, flex: 'none' }} className="num">
+                  {Number(l.paid_amount) > 0 ? money(l.paid_amount) : '—'}
+                </div>
+                {isAdmin && (
+                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', width: 64, flex: 'none' }} onClick={() => removeLine(l.id)}>
+                    Remove
+                  </button>
+                )}
               </div>
-            ) : (
-              <KV key={l.id} label={`${l.harmonised_code} — ${l.item_name}${bandNote}`}>
-                <span className="num">{money(l.line_amount)}</span>
-              </KV>
             );
           })}
-          {Number(bill.arrears_amount) > 0 && (
-            <>
-              <KV label="Arrears — brought forward from prior bills">
-                <span className="num">{money(bill.arrears_amount)}</span>
-              </KV>
-              {bill.superseded_bills.map((s) => (
-                <div key={s.bill_ref} style={{ marginBottom: 6 }}>
-                  <KV label={<span style={{ color: 'var(--ink-40)', fontSize: 12.5 }}>　consolidated from {s.bill_ref}</span>}>
-                    <span className="num" style={{ color: 'var(--ink-40)', fontSize: 12.5 }}>
-                      {money(s.amount)}
-                    </span>
-                  </KV>
-                  {s.lines.map((l) => {
-                    const bandNote = l.band_label != null ? ` (${l.band_label}${l.tier_label != null ? ` — ${l.tier_label}` : ''})` : '';
-                    return (
-                      <KV
-                        key={l.id}
-                        label={
-                          <span style={{ color: 'var(--ink-40)', fontSize: 12 }}>
-                            　　{l.harmonised_code} — {l.item_name}
-                            {bandNote}
-                          </span>
-                        }
-                      >
-                        <span className="num" style={{ color: 'var(--ink-40)', fontSize: 12 }}>
-                          {money(l.line_amount)}
-                        </span>
-                      </KV>
-                    );
-                  })}
-                </div>
-              ))}
-            </>
-          )}
           <KV label={<b>Total</b>}>
             <span className="num">{money(bill.total_amount)}</span>
           </KV>
@@ -233,6 +216,7 @@ export function BillDetailModal({ billId, onClose }: { billId: number; onClose: 
                   <option value="IB_MB">Bank Transfer</option>
                   <option value="USSD">USSD</option>
                   <option value="FIRSTMONIE">Agent Banking</option>
+                  <option value="CASH">Cash</option>
                 </select>
               </Field>
               <Field label="Bank / transaction ref (optional)">

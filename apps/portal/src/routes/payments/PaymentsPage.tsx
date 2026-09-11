@@ -12,6 +12,7 @@ const CHANNELS = [
   { code: 'IB_MB', label: 'Bank Transfer' },
   { code: 'USSD', label: 'USSD' },
   { code: 'FIRSTMONIE', label: 'Agent Banking' },
+  { code: 'CASH', label: 'Cash' },
 ];
 const TAG_FOR: Record<string, TagVariant> = { CONFIRMED: 'ok', FAILED: 'bad', PENDING: 'warn', REVERSED: 'neutral' };
 

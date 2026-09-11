@@ -1,14 +1,87 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { TagVariant } from '@acrev360/ui';
-import { Button, ClickableRow, Field, KV, Modal, NumCell, Pagination, Tag, money2, shortDate, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, KV, Modal, NumCell, Pagination, StatCard, Tag, money2, shortDate, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Navigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 
 const LADDER = ['COMPUTED', 'APPROVED', 'SETTLED'] as const;
 const TAG_FOR: Record<string, TagVariant> = { COMPUTED: 'brass', APPROVED: 'warn', SETTLED: 'ok', DISPUTED: 'bad' };
 
+// The admin drill-down (list of consultants -> per-consultant settlements ->
+// per-settlement bills) now lives on ConsultantsPage's own detail modal —
+// this route becomes a consultant's own dashboard instead. See below.
 export function SettlementsPage() {
+  const { user } = useAuth();
+  if (user?.access_level === 'COUNCIL_ADMIN') return <Navigate to="/consultants" replace />;
+  if (user?.access_level === 'CONSULTANT') return <MySettlementsPage />;
+  return <AdminSettlementsList />;
+}
+
+function MySettlementsPage() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['settlements', 'my-summary'],
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/settlements/my-summary');
+      if (error) throw new Error(errorMessage(error));
+      return data;
+    },
+  });
+
+  if (isLoading) return <div className="empty">Loading…</div>;
+  if (error) return <div className="notice notice-bad">{error instanceof Error ? error.message : 'Failed to load your settlements'}</div>;
+  if (!data) return null;
+
+  return (
+    <>
+      <div className="row" style={{ marginBottom: 16 }}>
+        <StatCard label="Total commission this year" value={money2(data.total_this_year)} accent="accent" />
+        <StatCard label="Approved" value={money2(data.approved_total)} />
+        <StatCard label="Settled" value={money2(data.settled_total)} />
+      </div>
+      <div className="card">
+        <h3>Bills</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bill Ref</th>
+                <th>Payer</th>
+                <th className="r">Collected</th>
+                <th className="r">Commission</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.bills.length > 0 ? (
+                data.bills.map((b) => (
+                  <tr key={b.bill_id}>
+                    <NumCell>{b.bill_ref}</NumCell>
+                    <td>{b.payer_name}</td>
+                    <NumCell className="r">{money2(b.collected)}</NumCell>
+                    <NumCell className="r">{money2(b.commission)}</NumCell>
+                    <td>
+                      <Tag variant={TAG_FOR[b.status] ?? 'neutral'}>{b.status}</Tag>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="empty">
+                    No paid or part-paid bills yet
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AdminSettlementsList() {
   const { user } = useAuth();
   const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const toast = useToast();

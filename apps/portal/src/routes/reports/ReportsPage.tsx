@@ -1,4 +1,4 @@
-import { apiClient, errorMessage } from '@acrev360/api';
+import { API_BASE_URL, apiClient, authStore, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
 import { Field, Input, NumCell, Pagination, TableWrap, dateTime, money, shortDate, useToast } from '@acrev360/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useRevenueItems } from '../../lib/revenueItems';
 import { useWards } from '../../lib/wards';
 
-const REPORT_TYPES = ['PAYERS', 'BILLS'] as const;
+const REPORT_TYPES = ['PAYERS', 'BILLS', 'SUMMARY'] as const;
 
 const KYC_TAG: Record<string, string> = { VERIFIED: 'ok', FLAGGED: 'bad', PENDING: 'warn' };
 const BILL_STATUS_TAG: Record<string, string> = { PAID: 'ok', OVERDUE: 'bad', PART_PAID: 'warn', CANCELLED: 'neutral', SUPERSEDED: 'neutral' };
@@ -30,6 +30,12 @@ function useConsultantOptions() {
   });
 }
 
+const REPORT_TYPE_LABEL: Record<(typeof REPORT_TYPES)[number], string> = {
+  PAYERS: 'Payers Report',
+  BILLS: 'Bills Report',
+  SUMMARY: 'Summary Reports',
+};
+
 export function ReportsPage() {
   const [reportType, setReportType] = useState<(typeof REPORT_TYPES)[number]>('PAYERS');
 
@@ -39,12 +45,12 @@ export function ReportsPage() {
         <div className="row" style={{ gap: 8 }}>
           {REPORT_TYPES.map((t) => (
             <button key={t} className={`btn ${reportType === t ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setReportType(t)}>
-              {t === 'PAYERS' ? 'Payers Report' : 'Bills Report'}
+              {REPORT_TYPE_LABEL[t]}
             </button>
           ))}
         </div>
       </div>
-      {reportType === 'PAYERS' ? <PayersReport /> : <BillsReport />}
+      {reportType === 'PAYERS' ? <PayersReport /> : reportType === 'BILLS' ? <BillsReport /> : <SummaryReports />}
     </>
   );
 }
@@ -420,6 +426,241 @@ function BillsReport() {
           )}
         </TableWrap>
         {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
+      </div>
+    </>
+  );
+}
+
+const ENTITIES = ['PAYERS', 'BILLS', 'PAYMENTS', 'SETTLEMENTS'] as const;
+type Entity = (typeof ENTITIES)[number];
+const ENTITY_LABEL: Record<Entity, string> = { PAYERS: 'Payers', BILLS: 'Bills', PAYMENTS: 'Payments', SETTLEMENTS: 'Settlements' };
+
+// Mirrors apps/common/api/reports.py's _ENTITY_DIMENSIONS exactly — the
+// backend 400s on any dimension outside this per-entity set, so the picker
+// only ever offers a combination that's actually valid.
+const ENTITY_DIMENSIONS: Record<Entity, string[]> = {
+  PAYERS: ['ward', 'consultant', 'date'],
+  BILLS: ['ward', 'consultant', 'revenue_item', 'date'],
+  PAYMENTS: ['ward', 'consultant', 'date'],
+  SETTLEMENTS: ['consultant', 'date'],
+};
+const DIMENSION_LABEL: Record<string, string> = { ward: 'Ward', consultant: 'Consultant', revenue_item: 'Revenue item', date: 'Date' };
+
+function buildReportUrl(params: {
+  entity: Entity;
+  groupBy: string[];
+  wardId: number | '';
+  consultantId: number | '';
+  revenueItemId: number | '';
+  dateFrom: string;
+  dateTo: string;
+  format?: 'csv';
+}) {
+  const q = new URLSearchParams();
+  q.set('entity', params.entity);
+  for (const dim of params.groupBy) q.append('group_by', dim);
+  if (params.wardId !== '') q.set('ward_id', String(params.wardId));
+  if (params.consultantId !== '') q.set('consultant_id', String(params.consultantId));
+  if (params.revenueItemId !== '') q.set('revenue_item_id', String(params.revenueItemId));
+  if (params.dateFrom) q.set('date_from', params.dateFrom);
+  if (params.dateTo) q.set('date_to', params.dateTo);
+  if (params.format) q.set('export', params.format);
+  return `${API_BASE_URL}/api/v1/reports?${q.toString()}`;
+}
+
+interface ReportResponse {
+  entity: string;
+  group_by: string[];
+  rows: Record<string, string | number | null>[];
+}
+
+const NUMERIC_COLUMNS = new Set(['count', 'billed', 'arrears', 'balance', 'amount', 'commission_amount', 'gross_collections']);
+
+function SummaryReports() {
+  const toast = useToast();
+  const { data: wards } = useWards();
+  const { data: consultants } = useConsultantOptions();
+  const { data: revenueItems } = useRevenueItems();
+
+  const [entity, setEntity] = useState<Entity>('BILLS');
+  const [groupBy, setGroupBy] = useState<string[]>(['ward']);
+  const [wardId, setWardId] = useState<number | ''>('');
+  const [consultantId, setConsultantId] = useState<number | ''>('');
+  const [revenueItemId, setRevenueItemId] = useState<number | ''>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [downloading, setDownloading] = useState(false);
+
+  const allowedDims = ENTITY_DIMENSIONS[entity];
+
+  function changeEntity(next: Entity) {
+    setEntity(next);
+    // Drop any selected dimension the new entity doesn't support, rather
+    // than carrying over a combination the backend would 400 on.
+    setGroupBy((prev) => prev.filter((d) => ENTITY_DIMENSIONS[next].includes(d)));
+    if (next !== 'BILLS') setRevenueItemId('');
+  }
+
+  function toggleDimension(dim: string) {
+    setGroupBy((prev) => {
+      if (prev.includes(dim)) return prev.filter((d) => d !== dim);
+      if (prev.length >= 2) {
+        toast('Group by at most 2 dimensions', true);
+        return prev;
+      }
+      return [...prev, dim];
+    });
+  }
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['reports', 'summary', entity, groupBy, wardId, consultantId, revenueItemId, dateFrom, dateTo],
+    retry: false,
+    queryFn: async (): Promise<ReportResponse> => {
+      const url = buildReportUrl({ entity, groupBy, wardId, consultantId, revenueItemId, dateFrom, dateTo });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${authStore.getAccessToken() ?? ''}` } });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error ?? 'Failed to load report');
+      return body;
+    },
+  });
+
+  async function downloadCsv() {
+    setDownloading(true);
+    try {
+      const url = buildReportUrl({ entity, groupBy, wardId, consultantId, revenueItemId, dateFrom, dateTo, format: 'csv' });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${authStore.getAccessToken() ?? ''}` } });
+      if (!res.ok) throw new Error('Failed to export report');
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${entity.toLowerCase()}_report.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not export report', true);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const columns = data ? Object.keys(data.rows[0] ?? { message: '' }) : [];
+
+  return (
+    <>
+      <div className="card">
+        <div className="row">
+          <Field label="Report on">
+            <select value={entity} onChange={(e) => changeEntity(e.target.value as Entity)}>
+              {ENTITIES.map((e) => (
+                <option key={e} value={e}>
+                  {ENTITY_LABEL[e]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="From">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </Field>
+          <Field label="To">
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </Field>
+        </div>
+        <div className="row" style={{ alignItems: 'end' }}>
+          {allowedDims.includes('ward') && (
+            <Field label="Ward">
+              <select value={wardId} onChange={(e) => setWardId(Number(e.target.value) || '')}>
+                <option value="">— All —</option>
+                {wards?.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.ward_name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {allowedDims.includes('consultant') && (
+            <Field label="Consultant">
+              <select value={consultantId} onChange={(e) => setConsultantId(Number(e.target.value) || '')}>
+                <option value="">— All —</option>
+                {consultants?.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.consultant_name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {allowedDims.includes('revenue_item') && (
+            <Field label="Revenue item">
+              <select value={revenueItemId} onChange={(e) => setRevenueItemId(Number(e.target.value) || '')}>
+                <option value="">— All —</option>
+                {revenueItems?.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.harmonised_code} — {i.item_name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <button className="btn btn-primary" type="button" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? 'Running…' : 'Run Report'}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={downloadCsv} disabled={downloading}>
+            {downloading ? 'Exporting…' : 'Export CSV'}
+          </button>
+        </div>
+        <div className="row" style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--ink-60)', marginRight: 8, alignSelf: 'center' }}>Group by (up to 2):</div>
+          {allowedDims.map((dim) => (
+            <button
+              key={dim}
+              type="button"
+              className={`btn btn-sm ${groupBy.includes(dim) ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ flex: 'none' }}
+              onClick={() => toggleDimension(dim)}
+            >
+              {DIMENSION_LABEL[dim]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <TableWrap>
+          {isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : error ? (
+            <div className="notice notice-bad">{error instanceof Error ? error.message : 'Failed to load report'}</div>
+          ) : !data || data.rows.length === 0 ? (
+            <div className="empty">Run a report to see results</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  {columns.map((c) => (
+                    <th key={c} className={NUMERIC_COLUMNS.has(c) ? 'r' : undefined}>
+                      {c.replace('_', ' ')}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((row, i) => (
+                  <tr key={i}>
+                    {columns.map((c) => (
+                      <NumCell key={c} className={NUMERIC_COLUMNS.has(c) ? 'r' : undefined}>
+                        {row[c] ?? '—'}
+                      </NumCell>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TableWrap>
       </div>
     </>
   );

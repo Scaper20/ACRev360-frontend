@@ -24,7 +24,8 @@ export function RegisterView({
   onReceipt: (receipt: ReceiptResult) => void;
 }) {
   const [payerType, setPayerType] = useState<PayerType>('BUSINESS');
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [idNumber, setIdNumber] = useState('');
@@ -93,7 +94,8 @@ export function RegisterView({
   }
 
   function reset() {
-    setFullName('');
+    setFirstName('');
+    setLastName('');
     setPhone('');
     setAddress('');
     setIdNumber('');
@@ -106,8 +108,8 @@ export function RegisterView({
       setError('No ward assigned to your account — contact your consultant.');
       return;
     }
-    if (!fullName.trim()) {
-      setError('Enter a name');
+    if (!firstName.trim()) {
+      setError(payerType === 'INDIVIDUAL' ? 'Enter a first name' : 'Enter a business name');
       return;
     }
     setError(null);
@@ -115,7 +117,8 @@ export function RegisterView({
 
     const payerFields = {
       payer_type: payerType,
-      full_name: fullName.trim(),
+      first_name: firstName.trim(),
+      ...(payerType === 'INDIVIDUAL' && lastName.trim() ? { last_name: lastName.trim() } : {}),
       phone,
       address,
       ward: wardId,
@@ -163,9 +166,10 @@ export function RegisterView({
         setSubmitting(false);
         return;
       }
-      enqueue('PAYER', payload, `New payer — ${fullName.trim()}`);
+      const displayName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+      enqueue('PAYER', payload, `New payer — ${displayName}`);
       reset();
-      onReceipt({ queued: true, amount: '0', payerName: fullName.trim(), channel: 'Registration', time: new Date().toISOString() });
+      onReceipt({ queued: true, amount: '0', payerName: displayName, channel: 'Registration', time: new Date().toISOString() });
     } finally {
       setSubmitting(false);
     }
@@ -186,9 +190,15 @@ export function RegisterView({
         </button>
       </div>
 
-      <Field label="Full name">
-        <input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+      <Field label={payerType === 'INDIVIDUAL' ? 'First name' : 'Business name'}>
+        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
       </Field>
+
+      {payerType === 'INDIVIDUAL' && (
+        <Field label="Last name (optional)">
+          <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </Field>
+      )}
 
       <Field label={payerType === 'INDIVIDUAL' ? 'NIN/BVN' : 'TIN'}>
         <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />

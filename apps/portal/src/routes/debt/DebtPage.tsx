@@ -178,6 +178,7 @@ export function DebtPage() {
                   <option value="IB_MB">Bank Transfer</option>
                   <option value="USSD">USSD</option>
                   <option value="FIRSTMONIE">Agent Banking</option>
+                  <option value="CASH">Cash</option>
                 </select>
               </Field>
               <Field label="Bank / transaction ref (optional)">

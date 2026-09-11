@@ -1,11 +1,14 @@
 import { apiClient, errorMessage } from '@acrev360/api';
-import type { GlobalExceptionList } from '@acrev360/api';
-import { Button, Card, ClickableRow, Field, KV, Modal, NumCell, Pagination, Select, TableWrap, Tag, money2, shortDate, useToast } from '@acrev360/ui';
+import { Button, Card, ClickableRow, Field, KV, Modal, NumCell, Pagination, Select, StatCard, TableWrap, Tag, dateTime, money2, shortDate, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 
-const CHANNELS = ['POS', 'OTC', 'IB_MB', 'USSD', 'FIRSTMONIE'];
+const CHANNELS = ['POS', 'OTC', 'IB_MB', 'USSD', 'FIRSTMONIE', 'CASH'];
+// Always-on view (Article 8) — refreshes on load, on this interval, and on
+// the manual button; distinct from the per-channel/per-date "Run" below,
+// which stays exactly as-is for auditing a specific past day.
+const LIVE_REFRESH_MS = 60_000;
 
 export function ReconciliationPage() {
   const { user } = useAuth();
@@ -27,15 +30,16 @@ export function ReconciliationPage() {
     },
   });
 
-  // GET /reconciliation/exceptions returns a bare array, not the paginated
-  // envelope the generated type claims — see packages/api/src/overrides.ts #7.
-  const unmatchedQuery = useQuery({
-    queryKey: ['reconciliation', 'exceptions'],
+  // Always-current view (Article 8) — computed live on every call, no manual
+  // "Run" needed. Refreshes on load, every LIVE_REFRESH_MS, and on demand.
+  const liveQuery = useQuery({
+    queryKey: ['reconciliation', 'live-summary'],
     queryFn: async () => {
-      const { data, error } = await apiClient.GET('/api/v1/reconciliation/exceptions', { params: { query: {} } });
+      const { data, error } = await apiClient.GET('/api/v1/reconciliation/live-summary');
       if (error) throw new Error(errorMessage(error));
-      return data as unknown as GlobalExceptionList;
+      return data;
     },
+    refetchInterval: LIVE_REFRESH_MS,
   });
 
   async function runNow() {
@@ -54,6 +58,61 @@ export function ReconciliationPage() {
 
   return (
     <>
+      <div className="toolbar">
+        <h3 style={{ marginBottom: 0, flex: 1 }}>Live Position</h3>
+        <button className="btn btn-ghost btn-sm" onClick={() => liveQuery.refetch()} disabled={liveQuery.isFetching}>
+          {liveQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+      {liveQuery.error ? (
+        <div className="notice notice-bad" style={{ marginBottom: 16 }}>
+          {liveQuery.error instanceof Error ? liveQuery.error.message : 'Failed to load live reconciliation summary'}
+        </div>
+      ) : (
+        <div className="row" style={{ marginBottom: 16 }}>
+          <StatCard label="Confirmed payments (platform)" value={liveQuery.data ? money2(liveQuery.data.total_platform) : '—'} />
+          <StatCard label="Bank-reported credits" value={liveQuery.data ? money2(liveQuery.data.total_bank) : '—'} />
+        </div>
+      )}
+
+      <Card style={{ marginBottom: 16 }}>
+        <h3>Unmatched Bank Credits</h3>
+        <TableWrap>
+          {liveQuery.isLoading ? (
+            <div className="empty">Loading…</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Bank Ref</th>
+                  <th>Channel</th>
+                  <th>Received</th>
+                  <th className="r">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liveQuery.data && liveQuery.data.unmatched_credits.length > 0 ? (
+                  liveQuery.data.unmatched_credits.map((c) => (
+                    <tr key={c.id}>
+                      <NumCell>{c.bank_txn_ref}</NumCell>
+                      <td>{c.channel_code}</td>
+                      <NumCell>{dateTime(c.received_at)}</NumCell>
+                      <NumCell className="r">{money2(c.amount)}</NumCell>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="empty">
+                      Nothing unmatched — all clean
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </TableWrap>
+      </Card>
+
       {isAdmin && (
         <div className="toolbar">
           <div className="grow" />
@@ -107,50 +166,6 @@ export function ReconciliationPage() {
           )}
         </TableWrap>
         {data != null && <Pagination page={page} count={data.count} onPageChange={setPage} />}
-      </Card>
-
-      <Card>
-        <h3>Unmatched Bank Credits</h3>
-        <TableWrap>
-          {unmatchedQuery.isLoading ? (
-            <div className="empty">Loading…</div>
-          ) : unmatchedQuery.error ? (
-            <div className="notice notice-bad">{unmatchedQuery.error instanceof Error ? unmatchedQuery.error.message : 'Failed to load unmatched credits'}</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Bank Ref</th>
-                  <th>Channel</th>
-                  <th>Run Date</th>
-                  <th className="r">Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unmatchedQuery.data && unmatchedQuery.data.length > 0 ? (
-                  unmatchedQuery.data.map((ex) => (
-                    <tr key={ex.id}>
-                      <NumCell>{ex.bank_txn_ref}</NumCell>
-                      <td>{ex.channel_code}</td>
-                      <NumCell>{shortDate(ex.run_date)}</NumCell>
-                      <NumCell className="r">{money2(ex.amount)}</NumCell>
-                      <td>
-                        <Tag variant={ex.resolved_at != null ? 'ok' : 'bad'}>{ex.resolved_at != null ? 'RESOLVED' : 'UNRESOLVED'}</Tag>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="empty">
-                      Nothing unmatched — all clean
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </TableWrap>
       </Card>
 
       {runOpen && (

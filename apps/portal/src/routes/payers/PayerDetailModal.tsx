@@ -20,6 +20,7 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
   const toast = useToast();
   const queryClient = useQueryClient();
   const [rollArrears, setRollArrears] = useState(false);
+  const [duplicate, setDuplicate] = useState<components['schemas']['Bill'] | null>(null);
 
   const payerQuery = useQuery({
     queryKey: ['payers', 'detail', payerId],
@@ -48,10 +49,19 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
     },
   });
 
-  async function issueHarmonizedBill() {
+  async function issueHarmonizedBill(force = false) {
     try {
-      const { data, error } = await apiClient.POST('/api/v1/bills', { body: { payer_id: payerId, bill_all_drafts: true, roll_arrears: rollArrears } });
-      if (error) throw new Error(errorMessage(error));
+      const { data, error, response } = await apiClient.POST('/api/v1/bills', {
+        body: { payer_id: payerId, bill_all_drafts: true, roll_arrears: rollArrears, force },
+      });
+      if (error) {
+        if (response.status === 409 && 'duplicate_of' in error) {
+          setDuplicate((error as { duplicate_of: components['schemas']['Bill'] }).duplicate_of);
+          return;
+        }
+        throw new Error(errorMessage(error));
+      }
+      setDuplicate(null);
       toast(`Harmonized bill issued — ${data.bill_ref} (${money(data.total_amount)})` + (Number(data.arrears_amount) > 0 ? ` · ${money(data.arrears_amount)} arrears consolidated` : ''));
       setRollArrears(false);
       await Promise.all([
@@ -195,9 +205,24 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
             Consolidate this payer&rsquo;s prior outstanding bills into this one (arrears brought forward)
           </label>
           {(drafts.length > 0 || rollArrears) && (
-            <button className="btn btn-brass btn-sm" style={{ marginTop: 8 }} onClick={issueHarmonizedBill}>
+            <button className="btn btn-brass btn-sm" style={{ marginTop: 8 }} onClick={() => issueHarmonizedBill(false)}>
               Issue Harmonized Bill
             </button>
+          )}
+          {duplicate != null && (
+            <div className="notice notice-bad" style={{ marginTop: 8 }}>
+              This payer already has an active bill for this year — {duplicate.bill_ref} (balance {money(duplicate.balance)}).
+              <div style={{ marginTop: 8 }}>
+                <button
+                  className="btn btn-brass btn-sm"
+                  onClick={() => {
+                    if (window.confirm(`Issue a new bill anyway alongside ${duplicate.bill_ref}?`)) void issueHarmonizedBill(true);
+                  }}
+                >
+                  Issue anyway
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}

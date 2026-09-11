@@ -17,6 +17,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   IB_MB: 'var(--teal)',
   USSD: 'var(--green-900)',
   FIRSTMONIE: 'var(--ink-60)',
+  CASH: 'var(--green-800)',
 };
 
 export function DashboardPage() {
