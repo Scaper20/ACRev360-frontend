@@ -76,11 +76,15 @@ export function ReceiptsView() {
           </KV>
 
           <h3 style={{ margin: '16px 0 8px' }}>What this covered</h3>
-          {receipt.lines.map((l) => (
-            <KV key={l.id} label={l.item_name + (l.band_label ? ` (${l.band_label}${l.tier_label ? ` — ${l.tier_label}` : ''})` : '')}>
-              <span className="num">{money(l.line_amount)}</span>
-            </KV>
-          ))}
+          {receipt.allocations.length > 0 ? (
+            receipt.allocations.map((a) => (
+              <KV key={a.id} label={`${a.harmonised_code} — ${a.item_name}`}>
+                <span className="num">{money(a.amount)}</span>
+              </KV>
+            ))
+          ) : (
+            <div className="empty">No allocation detail on file for this receipt</div>
+          )}
         </Modal>
       )}
     </>

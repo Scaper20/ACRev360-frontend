@@ -135,12 +135,16 @@ export function ReceiptsPage() {
           </KV>
           <KV label="Issued">{dateTime(receipt.created_at)}</KV>
 
-          <h3 style={{ margin: '14px 0 6px' }}>Paid For</h3>
-          {receipt.lines.map((l) => (
-            <KV key={l.id} label={l.item_name + (l.band_label ? ` (${l.band_label}${l.tier_label ? ` — ${l.tier_label}` : ''})` : '')}>
-              <span className="num">{money2(l.line_amount)}</span>
-            </KV>
-          ))}
+          <h3 style={{ margin: '14px 0 6px' }}>What This Payment Covered</h3>
+          {receipt.allocations.length > 0 ? (
+            receipt.allocations.map((a) => (
+              <KV key={a.id} label={`${a.harmonised_code} — ${a.item_name}`}>
+                <span className="num">{money2(a.amount)}</span>
+              </KV>
+            ))
+          ) : (
+            <div className="empty">No allocation detail on file for this receipt</div>
+          )}
           <KV label="Verification token">
             <span className="num">{receipt.qr_token}</span>
           </KV>

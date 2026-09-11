@@ -219,6 +219,17 @@ export function PaymentsPage() {
               <KV label="Posted by">{payment.posted_by_name || '—'}</KV>
               <KV label="Bank / transaction ref">{payment.bank_txn_ref || '—'}</KV>
               <KV label="Paid at">{dateTime(payment.created_at)}</KV>
+
+              {payment.allocations.length > 0 && (
+                <>
+                  <h3 style={{ margin: '16px 0 8px' }}>Applied to</h3>
+                  {payment.allocations.map((a) => (
+                    <KV key={a.id} label={`${a.harmonised_code} — ${a.item_name}`}>
+                      <span className="num">{money2(a.amount)}</span>
+                    </KV>
+                  ))}
+                </>
+              )}
             </>
           )}
         </Modal>
