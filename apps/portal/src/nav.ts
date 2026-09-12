@@ -263,5 +263,15 @@ export function navSectionsFor(accessLevel: AccessLevel): NavSectionDef[] {
           ],
         },
       ];
+    // Every AccessLevel without a portal nav yet (CONSULTANT_STAFF,
+    // AGENT_SUPERVISOR, the platform tier, EXTERNAL_AUDITOR, RATEPAYER*) —
+    // this switch previously had no default, so navSectionsFor silently
+    // returned undefined for any of these at runtime (TS's return type
+    // promised NavSectionDef[] always, which isn't actually true of a
+    // no-default switch) and ProtectedLayout's `sections.map(...)` crashed
+    // the whole portal shell on login. Same "no meaningful nav, don't crash"
+    // fallback as AGENT above, until each of these gets a real case.
+    default:
+      return [];
   }
 }
