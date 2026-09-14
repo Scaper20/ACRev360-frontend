@@ -14,20 +14,32 @@ export interface paths {
         /**
          * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
          *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
-         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
-         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
-         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     list/retrieve widen further to COUNCIL_IT/CONSULTANT_STAFF/
+         *     COUNCIL_AUDITOR/COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions,
+         *     see get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
          *     ward/team only) happens in get_queryset() via common.scoping.
+         *
+         *     COUNCIL_IT was originally left off list/retrieve — could create an
+         *     agent but not see the list it just created it into, confirmed live
+         *     against production by the frontend team (2026-09-11 CHANGELOG entry).
+         *     A role that can create a resource always needs to be able to list it;
+         *     that's not a separate grant to weigh, it's the same grant.
          */
         get: operations["v1_agents_list"];
         put?: never;
         /**
          * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
          *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
-         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
-         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
-         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     list/retrieve widen further to COUNCIL_IT/CONSULTANT_STAFF/
+         *     COUNCIL_AUDITOR/COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions,
+         *     see get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
          *     ward/team only) happens in get_queryset() via common.scoping.
+         *
+         *     COUNCIL_IT was originally left off list/retrieve — could create an
+         *     agent but not see the list it just created it into, confirmed live
+         *     against production by the frontend team (2026-09-11 CHANGELOG entry).
+         *     A role that can create a resource always needs to be able to list it;
+         *     that's not a separate grant to weigh, it's the same grant.
          */
         post: operations["v1_agents_create"];
         delete?: never;
@@ -46,10 +58,16 @@ export interface paths {
         /**
          * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
          *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
-         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
-         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
-         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     list/retrieve widen further to COUNCIL_IT/CONSULTANT_STAFF/
+         *     COUNCIL_AUDITOR/COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions,
+         *     see get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
          *     ward/team only) happens in get_queryset() via common.scoping.
+         *
+         *     COUNCIL_IT was originally left off list/retrieve — could create an
+         *     agent but not see the list it just created it into, confirmed live
+         *     against production by the frontend team (2026-09-11 CHANGELOG entry).
+         *     A role that can create a resource always needs to be able to list it;
+         *     that's not a separate grant to weigh, it's the same grant.
          */
         get: operations["v1_agents_retrieve"];
         put?: never;
@@ -151,10 +169,16 @@ export interface paths {
         /**
          * @description create stays COUNCIL_ADMIN/CONSULTANT/COUNCIL_IT (account-management,
          *     matching COUNCIL_IT's whole purpose per docs/RBAC_EXPANSION_DESIGN.md);
-         *     list/retrieve widen further to CONSULTANT_STAFF/COUNCIL_AUDITOR/
-         *     COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions, see
-         *     get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
+         *     list/retrieve widen further to COUNCIL_IT/CONSULTANT_STAFF/
+         *     COUNCIL_AUDITOR/COUNCIL_IGR_HEAD/AGENT_SUPERVISOR — read-only additions,
+         *     see get_permissions(). AGENT_SUPERVISOR's own further narrowing (own
          *     ward/team only) happens in get_queryset() via common.scoping.
+         *
+         *     COUNCIL_IT was originally left off list/retrieve — could create an
+         *     agent but not see the list it just created it into, confirmed live
+         *     against production by the frontend team (2026-09-11 CHANGELOG entry).
+         *     A role that can create a resource always needs to be able to list it;
+         *     that's not a separate grant to weigh, it's the same grant.
          */
         post: operations["v1_agents_portfolio_end_create"];
         delete?: never;
@@ -1379,7 +1403,8 @@ export interface paths {
         };
         get: operations["v1_revenue_items_list"];
         put?: never;
-        post?: never;
+        /** @description Only COUNCIL_ADMIN may manually create a council-local revenue item. */
+        post: operations["v1_revenue_items_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1396,7 +1421,8 @@ export interface paths {
         get: operations["v1_revenue_items_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Only COUNCIL_ADMIN may retire a revenue item (DELETE /api/v1/revenue-items/{id}). */
+        delete: operations["v1_revenue_items_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1453,6 +1479,23 @@ export interface paths {
          *     {"bands": []} clears banding and reverts the item to plain FLAT pricing.
          */
         post: operations["v1_revenue_items_rate_bands_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/revenue-items/{id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Only COUNCIL_ADMIN may retire a revenue item (POST /api/v1/revenue-items/{id}/retire). */
+        post: operations["v1_revenue_items_retire_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1685,6 +1728,7 @@ export interface components {
     schemas: {
         APIClient: {
             readonly id: number;
+            name?: string;
             channel: number;
             readonly api_key: string;
             is_active?: boolean;
@@ -1698,6 +1742,7 @@ export interface components {
             readonly last_used_at: string | null;
         };
         APIClientRequest: {
+            name?: string;
             channel: number;
             is_active?: boolean;
             /**
@@ -2027,6 +2072,19 @@ export interface components {
             readonly department: number | null;
             readonly department_name: string;
         };
+        CreateCouncilRevenueItemRequest: {
+            harmonised_code: string;
+            item_name: string;
+            category_id: number;
+            unit_of_charge: string;
+            department_id?: number | null;
+            /** Format: decimal */
+            rate_amount: string;
+            /** @default  */
+            bye_law_reference: string;
+            /** @default  */
+            bye_law_description: string;
+        };
         CreateDelegationRequest: {
             /** Format: email */
             proxy_email: string;
@@ -2043,6 +2101,7 @@ export interface components {
             nin_bvn_hash?: string;
             tin?: string;
             business_size?: (components["schemas"]["BusinessSizeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            line_of_business?: string;
             revenue_item_ids?: number[];
             /** @default false */
             force: boolean;
@@ -2758,6 +2817,7 @@ export interface components {
             nin_bvn_hash?: string;
             tin?: string;
             business_size?: (components["schemas"]["BusinessSizeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            line_of_business?: string;
             readonly kyc_status: components["schemas"]["KycStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -2784,6 +2844,7 @@ export interface components {
             nin_bvn_hash?: string;
             tin?: string;
             business_size?: (components["schemas"]["BusinessSizeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            line_of_business?: string;
             readonly kyc_status: components["schemas"]["KycStatusEnum"];
             /** Format: date-time */
             readonly created_at: string;
@@ -5424,6 +5485,31 @@ export interface operations {
             };
         };
     };
+    v1_revenue_items_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCouncilRevenueItemRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CreateCouncilRevenueItemRequest"];
+                "multipart/form-data": components["schemas"]["CreateCouncilRevenueItemRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouncilRevenueItem"];
+                };
+            };
+        };
+    };
     v1_revenue_items_retrieve: {
         parameters: {
             query?: never;
@@ -5442,6 +5528,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CouncilRevenueItem"];
                 };
+            };
+        };
+    };
+    v1_revenue_items_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5515,6 +5621,27 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["ReplaceRateBandsRequest"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouncilRevenueItem"];
+                };
+            };
+        };
+    };
+    v1_revenue_items_retire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

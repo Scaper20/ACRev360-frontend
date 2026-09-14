@@ -1,9 +1,10 @@
 import { apiClient, errorMessage, REVENUE_CATEGORY_ORDER } from '@acrev360/api';
-import { ClickableRow, Field, Input, Modal, NumCell, Tag, TableWrap, money, useToast } from '@acrev360/ui';
+import { Button, ClickableRow, Field, Input, Modal, NumCell, Tag, TableWrap, money, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useRevenueItems } from '../../lib/revenueItems';
+import { AddRevenueItemModal } from './AddRevenueItemModal';
 import { RateBandsEditor } from './RateBandsEditor';
 
 type SortKey = 'name' | 'code' | 'category' | 'rate';
@@ -20,6 +21,7 @@ export function RevenueItemsPage() {
   const [rateItemId, setRateItemId] = useState<number | null>(null);
   const [newRate, setNewRate] = useState('');
   const [departmentId, setDepartmentId] = useState<number | ''>('');
+  const [addOpen, setAddOpen] = useState(false);
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -71,6 +73,16 @@ export function RevenueItemsPage() {
     },
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ['revenue-categories'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/revenue-categories', { params: { query: {} } });
+      if (error) throw new Error(errorMessage(error));
+      return data.results;
+    },
+  });
+
   const item = data?.find((i) => i.id === rateItemId);
 
   // Re-sync the department picker to whatever's actually on the item every
@@ -108,6 +120,25 @@ export function RevenueItemsPage() {
     }
   }
 
+  // Retires (is_active: false), not a real delete — matches the backend's
+  // own "Only COUNCIL_ADMIN may retire" framing on both the DELETE and
+  // .../retire routes. Using .../retire rather than DELETE since it hands
+  // back the updated item directly instead of a bare 204, so the modal can
+  // close on real confirmed state rather than assuming the request worked.
+  async function retireItem() {
+    if (!item) return;
+    if (!window.confirm(`Retire ${item.item_name} (${item.harmonised_code})? It stops appearing here and can no longer be billed — past bills/assessments are unaffected.`)) return;
+    try {
+      const { error } = await apiClient.POST('/api/v1/revenue-items/{id}/retire', { params: { path: { id: String(item.id) } } });
+      if (error) throw new Error(errorMessage(error));
+      toast(`${item.item_name} retired`);
+      setRateItemId(null);
+      await queryClient.invalidateQueries({ queryKey: ['revenue-items'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not retire revenue item', true);
+    }
+  }
+
   return (
     <>
       <div className="toolbar">
@@ -133,6 +164,11 @@ export function RevenueItemsPage() {
           <option value="code">Sort: Code</option>
           <option value="rate">Sort: Rate</option>
         </select>
+        {isAdmin && (
+          <Button variant="primary" onClick={() => setAddOpen(true)}>
+            + Add Revenue Item
+          </Button>
+        )}
       </div>
       <div className="card">
         <TableWrap>
@@ -199,9 +235,14 @@ export function RevenueItemsPage() {
           onClose={() => setRateItemId(null)}
           title={item.item_name}
           footer={
-            <button className="btn btn-ghost" onClick={() => setRateItemId(null)}>
-              Close
-            </button>
+            <>
+              <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={retireItem}>
+                Retire
+              </button>
+              <button className="btn btn-ghost" onClick={() => setRateItemId(null)}>
+                Close
+              </button>
+            </>
           }
         >
           <h3 style={{ margin: '0 0 6px' }}>Flat Rate</h3>
@@ -243,6 +284,8 @@ export function RevenueItemsPage() {
           </div>
         </Modal>
       )}
+
+      {addOpen && <AddRevenueItemModal categories={categories} departments={departments} onClose={() => setAddOpen(false)} />}
     </>
   );
 }
