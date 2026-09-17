@@ -209,7 +209,13 @@ export function RateBandsEditor({
             Clear all bands
           </button>
         )}
-        <button type="button" className="btn btn-primary" disabled={saving || bands.length === 0} onClick={() => save(bands)}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={saving || bands.length === 0}
+          title={bands.length === 0 ? 'Add at least one band first' : undefined}
+          onClick={() => save(bands)}
+        >
           Save Bands
         </button>
       </div>

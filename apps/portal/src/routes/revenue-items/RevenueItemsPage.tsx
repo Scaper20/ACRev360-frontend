@@ -157,7 +157,7 @@ export function RevenueItemsPage() {
     <>
       <div className="toolbar">
         <input className="grow" autoComplete="off" placeholder="Search by item name or code…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select style={{ maxWidth: 200 }} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="">All categories</option>
           {REVENUE_CATEGORY_ORDER.map((c) => (
             <option key={c} value={c}>
@@ -165,7 +165,7 @@ export function RevenueItemsPage() {
             </option>
           ))}
         </select>
-        <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+        <select style={{ maxWidth: 200 }} value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
           <option value="">All departments</option>
           <option value={NO_DEPARTMENT}>No department</option>
           {departmentNames.map((d) => (
@@ -174,14 +174,14 @@ export function RevenueItemsPage() {
             </option>
           ))}
         </select>
-        <select value={pricingFilter} onChange={(e) => setPricingFilter(e.target.value)}>
+        <select style={{ maxWidth: 160 }} value={pricingFilter} onChange={(e) => setPricingFilter(e.target.value)}>
           {PRICING_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </select>
-        <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+        <select style={{ maxWidth: 160 }} value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
           <option value="category">Sort: Category</option>
           <option value="name">Sort: Name</option>
           <option value="code">Sort: Code</option>
