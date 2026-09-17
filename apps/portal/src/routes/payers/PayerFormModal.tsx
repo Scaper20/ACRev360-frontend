@@ -1,11 +1,10 @@
 import { apiClient, errorMessage } from '@acrev360/api';
 import type { components } from '@acrev360/api';
-import { Field, GroupedChecklist, Input, Modal, Notice, Row, Select, useToast } from '@acrev360/ui';
+import { Field, Input, Modal, Notice, Row, Select, useToast } from '@acrev360/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { sha256Hex } from '../../lib/hash';
-import { REVENUE_CATEGORY_ORDER, toGroupedItems, useRevenueItems } from '../../lib/revenueItems';
 import { useWards } from '../../lib/wards';
 
 export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL' | 'BUSINESS'; onClose: () => void }) {
@@ -13,7 +12,6 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const { user } = useAuth();
   const isAdmin = user?.access_level === 'COUNCIL_ADMIN';
   const { data: wards } = useWards();
-  const { data: revenueItems } = useRevenueItems();
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -40,14 +38,9 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const [address, setAddress] = useState('');
   const [businessSize, setBusinessSize] = useState('');
   const [assignedConsultantId, setAssignedConsultantId] = useState<number | ''>('');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<{ full_name: string; payer_ref: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const flatRateItems = revenueItems?.filter((i) => (i.rate_bands?.length ?? 0) === 0) ?? [];
-  const bandedItemCount = (revenueItems?.length ?? 0) - flatRateItems.length;
-  const groupedItems = toGroupedItems(flatRateItems);
 
   async function submit(force = false) {
     if (!firstName.trim()) {
@@ -70,7 +63,6 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         email: email.trim() || undefined,
         address: address.trim() || undefined,
         ward: ward as number,
-        revenue_item_ids: [...selected],
         force,
         ...(idNum.trim() ? (isIndividual ? { nin_bvn_hash: await sha256Hex(idNum.trim()) } : { tin: idNum.trim() }) : {}),
         ...(!isIndividual && businessSize ? { business_size: businessSize as components['schemas']['BusinessSizeEnum'] } : {}),
@@ -85,7 +77,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         }
         throw new Error(errorMessage(error));
       }
-      toast(`${isIndividual ? 'Individual' : 'Business'} registered — ${data.payer_ref}${data.draft_assessments_created ? ` (${data.draft_assessments_created} item(s) enumerated)` : ''}`);
+      toast(`${isIndividual ? 'Individual' : 'Business'} registered — ${data.payer_ref}`);
       await queryClient.invalidateQueries({ queryKey: ['payers'] });
       onClose();
     } catch (e) {
@@ -191,26 +183,6 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
               ))}
           </Select>
         </Field>
-      )}
-      <Field label="Revenue items liable (optional — enumerate what applies now)">
-        <GroupedChecklist
-          items={groupedItems}
-          groupOrder={REVENUE_CATEGORY_ORDER}
-          selected={selected}
-          onToggle={(id) =>
-            setSelected((prev) => {
-              const next = new Set(prev);
-              next.has(id) ? next.delete(id) : next.add(id);
-              return next;
-            })
-          }
-        />
-      </Field>
-      {bandedItemCount > 0 && (
-        <Notice variant="info">
-          {bandedItemCount} item{bandedItemCount === 1 ? '' : 's'} priced by band or tier (e.g. shop size, business turnover) aren&rsquo;t listed above — register the payer first, then add
-          {bandedItemCount === 1 ? ' it' : ' those'} from the bill screen, where the correct band can be selected.
-        </Notice>
       )}
       {error != null && <Notice variant="bad">{error}</Notice>}
       {duplicate != null && (

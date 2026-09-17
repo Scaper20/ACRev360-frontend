@@ -1,18 +1,12 @@
-import type { GroupableRevenueItem } from '@acrev360/api';
-import { apiClient, errorMessage, REVENUE_CATEGORY_ORDER, toGroupedItems } from '@acrev360/api';
-import type { GroupedItem } from '@acrev360/ui';
-import { Button, Field, GroupedChecklist, Notice } from '@acrev360/ui';
-import { useEffect, useState } from 'react';
+import { Button, Field, Notice } from '@acrev360/ui';
+import { apiClient, errorMessage } from '@acrev360/api';
+import { useState } from 'react';
 import { enqueue } from '../lib/offlineQueue';
 import type { ReceiptResult } from './ReceiptView';
 
 type PayerType = 'INDIVIDUAL' | 'BUSINESS';
 type BusinessSize = 'MICRO' | 'SMALL' | 'MEDIUM' | 'LARGE';
 const BUSINESS_SIZES: BusinessSize[] = ['MICRO', 'SMALL', 'MEDIUM', 'LARGE'];
-
-interface FlatItem extends GroupedItem {
-  itemName: string;
-}
 
 export function RegisterView({
   wardId,
@@ -32,53 +26,8 @@ export function RegisterView({
   const [businessSize, setBusinessSize] = useState<BusinessSize>('MICRO');
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [items, setItems] = useState<GroupableRevenueItem[]>([]);
-  const [itemsUnavailable, setItemsUnavailable] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiClient
-      .GET('/api/v1/revenue-items', { params: { query: {} } })
-      .then(({ data, error: apiError }) => {
-        if (apiError) {
-          setItemsUnavailable(true);
-          return;
-        }
-        setItems(data.results.filter((i) => i.is_active));
-      })
-      .catch(() => {
-        // No cache fallback here deliberately — the checklist is only
-        // meaningful while online enough to have fetched it at least once
-        // this session; registering with zero items liable is still valid
-        // (a payer can be enumerated before any specific charge is known).
-        // Audit finding: this used to fail silently, leaving an empty
-        // checklist with no explanation — now flagged so the agent knows
-        // *why* it's empty instead of assuming the payer just owes nothing.
-        setItemsUnavailable(true);
-      });
-  }, []);
-
-  const grouped = toGroupedItems(items);
-  const flatOnly = grouped.filter((i) => !i.isBanded);
-  const bandedCount = grouped.length - flatOnly.length;
-  const pickerItems: FlatItem[] = flatOnly.map((i) => ({
-    id: i.id,
-    groupLabel: i.groupLabel,
-    searchText: i.searchText,
-    itemName: i.itemName,
-    render: <>{i.searchText}</>,
-  }));
-
-  function toggleItem(id: number) {
-    setSelectedItemIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   function captureGps() {
     setGpsError(null);
@@ -100,7 +49,6 @@ export function RegisterView({
     setAddress('');
     setIdNumber('');
     setGps(null);
-    setSelectedItemIds(new Set());
   }
 
   async function submit() {
@@ -122,7 +70,6 @@ export function RegisterView({
       phone,
       address,
       ward: wardId,
-      revenue_item_ids: [...selectedItemIds],
       force: false,
       ...(payerType === 'INDIVIDUAL' ? { nin_bvn_hash: idNumber } : { tin: idNumber, business_size: businessSize }),
     };
@@ -230,15 +177,6 @@ export function RegisterView({
         </button>
         {gpsError != null && <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>{gpsError}</div>}
       </div>
-
-      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-60)', display: 'block', marginBottom: 5 }}>
-        Revenue items liable {bandedCount > 0 && <span style={{ fontWeight: 400 }}>({bandedCount} banded item{bandedCount === 1 ? '' : 's'} not shown — add via a bill instead)</span>}
-      </label>
-      {itemsUnavailable ? (
-        <Notice variant="info">Revenue items couldn't be loaded — you're likely offline. You can still register this payer; add what they're liable for once back online.</Notice>
-      ) : (
-        <GroupedChecklist items={pickerItems} groupOrder={REVENUE_CATEGORY_ORDER} selected={selectedItemIds} onToggle={toggleItem} />
-      )}
 
       {error != null && (
         <div className="notice notice-bad" style={{ margin: '12px 0', fontSize: 12 }}>
