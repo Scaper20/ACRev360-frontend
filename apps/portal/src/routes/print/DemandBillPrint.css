@@ -1,9 +1,22 @@
 /* Self-contained on purpose — this is a faithful reproduction of a real KAC
    paper document, not an app screen, so it deliberately doesn't share the
    app's design tokens/theming. Ported 1:1 from the old prototype's
-   demand-bill.html <style> block. */
+   demand-bill.html <style> block, with print sizing fixed to actually fit a
+   standard A4 sheet (the ported version had no @page rule and an
+   unconstrained print width, so it printed oversized/cut off).
 
-.print-page {
+   Every selector is scoped under .bill-print-page — DemandNoticePrint.css
+   (a separate document) reuses the same bare class names (.print-page,
+   .print-sheet, etc.), and since both stylesheets load on any page that
+   imports either component, an unscoped rule here would silently win or
+   lose against the notice's depending on injection order. */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+.bill-print-page.print-page {
   --green: #0b3d2e;
   --green-dk: #06281d;
   --paper: #ffffff;
@@ -21,25 +34,26 @@
   box-sizing: border-box;
   min-height: 100vh;
 }
-.print-page * {
+.bill-print-page.print-page * {
   box-sizing: border-box;
 }
-.print-sheet {
-  max-width: 820px;
+.bill-print-page .print-sheet {
+  /* 186mm ≈ A4's printable width at the @page margin above (210mm - 2×12mm) */
+  max-width: 703px;
   margin: 0 auto;
   background: var(--paper);
-  padding: 34px 38px;
+  padding: 20px 22px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.print-head {
+.bill-print-page .print-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
 }
-.print-crest {
+.bill-print-page .print-crest {
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -51,127 +65,141 @@
   font-size: 13px;
   flex-shrink: 0;
 }
-.print-head h1 {
+.bill-print-page .print-head h1 {
   font-size: 19px;
   margin: 0 0 2px;
   letter-spacing: 0.02em;
   color: var(--green-dk);
 }
-.print-head .sub {
+.bill-print-page .print-head .sub {
   font-size: 12px;
   color: var(--ink-60);
 }
-.print-qr {
+.bill-print-page .print-qr {
   width: 52px;
   height: 52px;
   background: repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0 / 10px 10px;
   flex-shrink: 0;
   border: 1px solid #ccc;
 }
-.print-sheet hr {
+.bill-print-page .print-sheet hr {
   border: none;
   border-top: 2px solid var(--green);
   margin: 14px 0;
 }
-.print-grid2 {
+.bill-print-page .print-grid2 {
   display: grid;
   grid-template-columns: 1.3fr 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
-.print-grid2 div div {
+.bill-print-page .print-grid2 div div {
   margin-bottom: 2px;
 }
-.print-grid2 b {
+.bill-print-page .print-grid2 b {
   display: block;
 }
-.print-notice-text {
+.bill-print-page .print-notice-text {
   margin: 14px 0;
   font-size: 12.5px;
 }
-.print-notice-text b {
+.bill-print-page .print-notice-text b {
   color: var(--green-dk);
 }
-.print-sheet table {
+.bill-print-page .print-sheet table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 11px;
 }
-.print-sheet th,
-.print-sheet td {
+.bill-print-page .print-sheet th,
+.bill-print-page .print-sheet td {
   border: 1px solid #223;
-  padding: 6px 8px;
+  padding: 5px 6px;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: break-word;
 }
-.print-sheet thead th {
+.bill-print-page .print-sheet thead th {
   background: var(--green);
   color: #fff;
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.print-sheet td.num,
-.print-sheet th.num {
+.bill-print-page .print-sheet td.num,
+.bill-print-page .print-sheet th.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.print-sheet tfoot td {
+.bill-print-page .print-sheet tfoot td {
   font-weight: 700;
   background: #f0f4f2;
 }
-.print-warn {
+.bill-print-page .print-warn {
   margin-top: 14px;
   font-size: 11.5px;
   font-weight: 600;
 }
-.print-copies {
+.bill-print-page .print-copies {
   display: flex;
   gap: 24px;
   margin-top: 22px;
   border-top: 1px dashed #888;
   padding-top: 16px;
 }
-.print-copy {
+.bill-print-page .print-copy {
   flex: 1;
   font-size: 11.5px;
 }
-.print-copy h3 {
+.bill-print-page .print-copy h3 {
   font-size: 12px;
   margin: 0 0 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--green-dk);
 }
-.print-copy .kv {
+.bill-print-page .print-copy .kv {
   margin: 3px 0;
 }
-.print-sig {
+.bill-print-page .print-sig {
   margin-top: 26px;
   border-top: 1px solid #333;
   padding-top: 4px;
   width: 70%;
 }
-.print-lost {
+.bill-print-page .print-lost {
   text-align: center;
   margin-top: 18px;
   font-size: 11.5px;
   font-weight: 700;
 }
-.print-err {
+.bill-print-page .print-err {
   text-align: center;
   padding: 60px 20px;
   color: #a32e2e;
   font-size: 15px;
 }
 @media print {
-  .print-page {
+  .bill-print-page.print-page {
     background: #fff;
     padding: 0;
+    min-height: 0;
   }
-  .print-sheet {
+  .bill-print-page .print-sheet {
     box-shadow: none;
-    max-width: none;
+    /* Keep the A4-fitted max-width from above — the old rule cleared this to
+       `none`, which is exactly what let the sheet render wider than the
+       printable page and get cut off or auto-scaled unpredictably. */
+    margin: 0;
+  }
+  .bill-print-page .print-sheet table,
+  .bill-print-page .print-sheet tr,
+  .bill-print-page .print-copy {
+    page-break-inside: avoid;
+  }
+  .bill-print-page .print-copies {
+    page-break-inside: avoid;
   }
 }

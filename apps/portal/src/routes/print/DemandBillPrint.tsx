@@ -31,7 +31,7 @@ export function DemandBillPrint() {
   const totalDue = Number(bill.balance);
 
   return (
-    <div className="print-page">
+    <div className="print-page bill-print-page">
       <div className="print-sheet">
         <div className="print-head">
           <div className="print-crest">KAC</div>
@@ -86,12 +86,12 @@ export function DemandBillPrint() {
         <table>
           <thead>
             <tr>
-              <th>Year</th>
-              <th>Summary</th>
-              <th className="num">Arrears (₦)</th>
-              <th className="num">Debit (₦)</th>
-              <th className="num">Credit (₦)</th>
-              <th className="num">Balance (₦)</th>
+              <th style={{ width: '10%' }}>Year</th>
+              <th style={{ width: '32%' }}>Summary</th>
+              <th className="num" style={{ width: '14.5%' }}>Arrears (₦)</th>
+              <th className="num" style={{ width: '14.5%' }}>Debit (₦)</th>
+              <th className="num" style={{ width: '14.5%' }}>Credit (₦)</th>
+              <th className="num" style={{ width: '14.5%' }}>Balance (₦)</th>
             </tr>
           </thead>
           <tbody>
