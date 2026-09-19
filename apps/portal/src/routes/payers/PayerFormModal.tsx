@@ -37,6 +37,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
   const [ward, setWard] = useState<number | ''>('');
   const [address, setAddress] = useState('');
   const [businessSize, setBusinessSize] = useState('');
+  const [lineOfBusiness, setLineOfBusiness] = useState('');
   const [assignedConsultantId, setAssignedConsultantId] = useState<number | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<{ full_name: string; payer_ref: string } | null>(null);
@@ -66,6 +67,7 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
         force,
         ...(idNum.trim() ? (isIndividual ? { nin_bvn_hash: await sha256Hex(idNum.trim()) } : { tin: idNum.trim() }) : {}),
         ...(!isIndividual && businessSize ? { business_size: businessSize as components['schemas']['BusinessSizeEnum'] } : {}),
+        ...(!isIndividual && lineOfBusiness.trim() ? { line_of_business: lineOfBusiness.trim() } : {}),
         ...(isAdmin && assignedConsultantId ? { assigned_consultant_id: assignedConsultantId } : {}),
       };
 
@@ -152,6 +154,13 @@ export function PayerFormModal({ payerType, onClose }: { payerType: 'INDIVIDUAL'
           </Field>
         )}
       </Row>
+      {!isIndividual && (
+        <Row>
+          <Field label="Business type (optional)">
+            <Input value={lineOfBusiness} onChange={(e) => setLineOfBusiness(e.target.value)} placeholder="e.g. Provision store, Barbing salon, Auto repair" />
+          </Field>
+        </Row>
+      )}
       <Row>
         <Field label="Ward">
           <Select value={ward} onChange={(e) => setWard(Number(e.target.value))}>

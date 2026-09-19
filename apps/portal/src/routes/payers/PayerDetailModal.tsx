@@ -185,6 +185,7 @@ export function PayerDetailModal({ payerId, onClose }: { payerId: number; onClos
             {p.payer_type}
             {p.business_size ? ` · ${p.business_size[0]}${p.business_size.slice(1).toLowerCase()}` : ''}
           </KV>
+          {p.line_of_business && <KV label="Business type">{p.line_of_business}</KV>}
           <KV label="Ward">{wardName(p.ward)}</KV>
           <KV label="Phone">
             <span className="num">{p.phone || '—'}</span>

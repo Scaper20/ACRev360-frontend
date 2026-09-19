@@ -24,6 +24,7 @@ export function RegisterView({
   const [address, setAddress] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [businessSize, setBusinessSize] = useState<BusinessSize>('MICRO');
+  const [lineOfBusiness, setLineOfBusiness] = useState('');
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +49,7 @@ export function RegisterView({
     setPhone('');
     setAddress('');
     setIdNumber('');
+    setLineOfBusiness('');
     setGps(null);
   }
 
@@ -71,7 +73,9 @@ export function RegisterView({
       address,
       ward: wardId,
       force: false,
-      ...(payerType === 'INDIVIDUAL' ? { nin_bvn_hash: idNumber } : { tin: idNumber, business_size: businessSize }),
+      ...(payerType === 'INDIVIDUAL'
+        ? { nin_bvn_hash: idNumber }
+        : { tin: idNumber, business_size: businessSize, ...(lineOfBusiness.trim() ? { line_of_business: lineOfBusiness.trim() } : {}) }),
     };
     // geo isn't a CreatePayerSerializer field — Payer itself carries no geo
     // columns, EnumeratedAsset does. The online path below posts it as a
@@ -160,6 +164,12 @@ export function RegisterView({
               </option>
             ))}
           </select>
+        </Field>
+      )}
+
+      {payerType === 'BUSINESS' && (
+        <Field label="Business type (optional)">
+          <input value={lineOfBusiness} onChange={(e) => setLineOfBusiness(e.target.value)} placeholder="e.g. Provision store" />
         </Field>
       )}
 

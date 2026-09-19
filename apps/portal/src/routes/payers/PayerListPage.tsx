@@ -57,6 +57,7 @@ export function PayerListPage() {
                   <th>Payer Ref</th>
                   <th>Name</th>
                   <th>Type</th>
+                  <th>Business Type</th>
                   <th>Ward</th>
                   <th>Phone</th>
                   <th>KYC</th>
@@ -69,6 +70,7 @@ export function PayerListPage() {
                       <NumCell>{p.payer_ref}</NumCell>
                       <td>{p.full_name}</td>
                       <td>{p.payer_type}</td>
+                      <td>{p.line_of_business || '—'}</td>
                       <td>{wardName(p.ward)}</td>
                       <NumCell>{p.phone || '—'}</NumCell>
                       <td>
@@ -78,7 +80,7 @@ export function PayerListPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="empty">
+                    <td colSpan={7} className="empty">
                       No payers match
                     </td>
                   </tr>
