@@ -17,6 +17,7 @@ export function ChannelsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
   const [channelId, setChannelId] = useState<number | ''>('');
   const [neverExpires, setNeverExpires] = useState(true);
   const [expiresAt, setExpiresAt] = useState('');
@@ -44,6 +45,7 @@ export function ChannelsPage() {
   });
 
   function resetCreateForm() {
+    setName('');
     setChannelId('');
     setNeverExpires(true);
     setExpiresAt('');
@@ -58,6 +60,7 @@ export function ChannelsPage() {
       // plaintext webhook secret is ever returned, so show it prominently.
       const { data, error } = await apiClient.POST('/api/v1/api-clients', {
         body: {
+          name: name.trim() || undefined,
           channel: channelId,
           expires_at: neverExpires || !expiresAt ? null : new Date(expiresAt).toISOString(),
           scopes: webhookScope ? ['payments.webhook.post'] : [],
@@ -118,6 +121,7 @@ export function ChannelsPage() {
             <table>
               <thead>
                 <tr>
+                  <th>Name</th>
                   <th>API Key</th>
                   <th>Scopes</th>
                   <th>Expires</th>
@@ -131,6 +135,7 @@ export function ChannelsPage() {
                   const expired = isExpired(c.expires_at);
                   return (
                     <tr key={c.id}>
+                      <td>{c.name || <span style={{ color: 'var(--ink-40)' }}>—</span>}</td>
                       <td className="num">{c.api_key}</td>
                       <td>{c.scopes.length > 0 ? c.scopes.map((s) => SCOPE_LABEL[s] ?? s).join(', ') : 'Full access'}</td>
                       <td>{c.expires_at == null ? 'Never' : dateTime(c.expires_at)}</td>
@@ -150,7 +155,7 @@ export function ChannelsPage() {
                 })}
                 {clientsQuery.data?.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="empty">
+                    <td colSpan={7} className="empty">
                       No API clients registered
                     </td>
                   </tr>
@@ -186,6 +191,9 @@ export function ChannelsPage() {
             </>
           }
         >
+          <Field label="Name (optional)">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Paystack webhook" />
+          </Field>
           <Field label="Channel">
             <Select value={channelId} onChange={(e) => setChannelId(Number(e.target.value))}>
               <option value="">—</option>
